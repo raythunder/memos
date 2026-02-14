@@ -8,10 +8,27 @@ import (
 	"time"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 
 	apiv1 "github.com/usememos/memos/proto/gen/api/v1"
 )
+
+func TestSearchMemosSemanticUnsupportedDriver(t *testing.T) {
+	ctx := context.Background()
+	ts := NewTestService(t)
+	defer ts.Cleanup()
+
+	_, err := ts.Service.SearchMemosSemantic(ctx, &apiv1.SearchMemosSemanticRequest{
+		Query: "semantic query",
+	})
+	require.Error(t, err)
+
+	st, ok := status.FromError(err)
+	require.True(t, ok)
+	require.Equal(t, codes.FailedPrecondition, st.Code())
+}
 
 func TestListMemos(t *testing.T) {
 	ctx := context.Background()

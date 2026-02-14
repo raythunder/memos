@@ -38,6 +38,9 @@ const (
 	MemoServiceCreateMemoProcedure = "/memos.api.v1.MemoService/CreateMemo"
 	// MemoServiceListMemosProcedure is the fully-qualified name of the MemoService's ListMemos RPC.
 	MemoServiceListMemosProcedure = "/memos.api.v1.MemoService/ListMemos"
+	// MemoServiceSearchMemosSemanticProcedure is the fully-qualified name of the MemoService's
+	// SearchMemosSemantic RPC.
+	MemoServiceSearchMemosSemanticProcedure = "/memos.api.v1.MemoService/SearchMemosSemantic"
 	// MemoServiceGetMemoProcedure is the fully-qualified name of the MemoService's GetMemo RPC.
 	MemoServiceGetMemoProcedure = "/memos.api.v1.MemoService/GetMemo"
 	// MemoServiceUpdateMemoProcedure is the fully-qualified name of the MemoService's UpdateMemo RPC.
@@ -79,6 +82,8 @@ type MemoServiceClient interface {
 	CreateMemo(context.Context, *connect.Request[v1.CreateMemoRequest]) (*connect.Response[v1.Memo], error)
 	// ListMemos lists memos with pagination and filter.
 	ListMemos(context.Context, *connect.Request[v1.ListMemosRequest]) (*connect.Response[v1.ListMemosResponse], error)
+	// SearchMemosSemantic searches memos by semantic similarity.
+	SearchMemosSemantic(context.Context, *connect.Request[v1.SearchMemosSemanticRequest]) (*connect.Response[v1.ListMemosResponse], error)
 	// GetMemo gets a memo.
 	GetMemo(context.Context, *connect.Request[v1.GetMemoRequest]) (*connect.Response[v1.Memo], error)
 	// UpdateMemo updates a memo.
@@ -126,6 +131,12 @@ func NewMemoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 			httpClient,
 			baseURL+MemoServiceListMemosProcedure,
 			connect.WithSchema(memoServiceMethods.ByName("ListMemos")),
+			connect.WithClientOptions(opts...),
+		),
+		searchMemosSemantic: connect.NewClient[v1.SearchMemosSemanticRequest, v1.ListMemosResponse](
+			httpClient,
+			baseURL+MemoServiceSearchMemosSemanticProcedure,
+			connect.WithSchema(memoServiceMethods.ByName("SearchMemosSemantic")),
 			connect.WithClientOptions(opts...),
 		),
 		getMemo: connect.NewClient[v1.GetMemoRequest, v1.Memo](
@@ -207,6 +218,7 @@ func NewMemoServiceClient(httpClient connect.HTTPClient, baseURL string, opts ..
 type memoServiceClient struct {
 	createMemo          *connect.Client[v1.CreateMemoRequest, v1.Memo]
 	listMemos           *connect.Client[v1.ListMemosRequest, v1.ListMemosResponse]
+	searchMemosSemantic *connect.Client[v1.SearchMemosSemanticRequest, v1.ListMemosResponse]
 	getMemo             *connect.Client[v1.GetMemoRequest, v1.Memo]
 	updateMemo          *connect.Client[v1.UpdateMemoRequest, v1.Memo]
 	deleteMemo          *connect.Client[v1.DeleteMemoRequest, emptypb.Empty]
@@ -229,6 +241,11 @@ func (c *memoServiceClient) CreateMemo(ctx context.Context, req *connect.Request
 // ListMemos calls memos.api.v1.MemoService.ListMemos.
 func (c *memoServiceClient) ListMemos(ctx context.Context, req *connect.Request[v1.ListMemosRequest]) (*connect.Response[v1.ListMemosResponse], error) {
 	return c.listMemos.CallUnary(ctx, req)
+}
+
+// SearchMemosSemantic calls memos.api.v1.MemoService.SearchMemosSemantic.
+func (c *memoServiceClient) SearchMemosSemantic(ctx context.Context, req *connect.Request[v1.SearchMemosSemanticRequest]) (*connect.Response[v1.ListMemosResponse], error) {
+	return c.searchMemosSemantic.CallUnary(ctx, req)
 }
 
 // GetMemo calls memos.api.v1.MemoService.GetMemo.
@@ -297,6 +314,8 @@ type MemoServiceHandler interface {
 	CreateMemo(context.Context, *connect.Request[v1.CreateMemoRequest]) (*connect.Response[v1.Memo], error)
 	// ListMemos lists memos with pagination and filter.
 	ListMemos(context.Context, *connect.Request[v1.ListMemosRequest]) (*connect.Response[v1.ListMemosResponse], error)
+	// SearchMemosSemantic searches memos by semantic similarity.
+	SearchMemosSemantic(context.Context, *connect.Request[v1.SearchMemosSemanticRequest]) (*connect.Response[v1.ListMemosResponse], error)
 	// GetMemo gets a memo.
 	GetMemo(context.Context, *connect.Request[v1.GetMemoRequest]) (*connect.Response[v1.Memo], error)
 	// UpdateMemo updates a memo.
@@ -340,6 +359,12 @@ func NewMemoServiceHandler(svc MemoServiceHandler, opts ...connect.HandlerOption
 		MemoServiceListMemosProcedure,
 		svc.ListMemos,
 		connect.WithSchema(memoServiceMethods.ByName("ListMemos")),
+		connect.WithHandlerOptions(opts...),
+	)
+	memoServiceSearchMemosSemanticHandler := connect.NewUnaryHandler(
+		MemoServiceSearchMemosSemanticProcedure,
+		svc.SearchMemosSemantic,
+		connect.WithSchema(memoServiceMethods.ByName("SearchMemosSemantic")),
 		connect.WithHandlerOptions(opts...),
 	)
 	memoServiceGetMemoHandler := connect.NewUnaryHandler(
@@ -420,6 +445,8 @@ func NewMemoServiceHandler(svc MemoServiceHandler, opts ...connect.HandlerOption
 			memoServiceCreateMemoHandler.ServeHTTP(w, r)
 		case MemoServiceListMemosProcedure:
 			memoServiceListMemosHandler.ServeHTTP(w, r)
+		case MemoServiceSearchMemosSemanticProcedure:
+			memoServiceSearchMemosSemanticHandler.ServeHTTP(w, r)
 		case MemoServiceGetMemoProcedure:
 			memoServiceGetMemoHandler.ServeHTTP(w, r)
 		case MemoServiceUpdateMemoProcedure:
@@ -459,6 +486,10 @@ func (UnimplementedMemoServiceHandler) CreateMemo(context.Context, *connect.Requ
 
 func (UnimplementedMemoServiceHandler) ListMemos(context.Context, *connect.Request[v1.ListMemosRequest]) (*connect.Response[v1.ListMemosResponse], error) {
 	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.MemoService.ListMemos is not implemented"))
+}
+
+func (UnimplementedMemoServiceHandler) SearchMemosSemantic(context.Context, *connect.Request[v1.SearchMemosSemanticRequest]) (*connect.Response[v1.ListMemosResponse], error) {
+	return nil, connect.NewError(connect.CodeUnimplemented, errors.New("memos.api.v1.MemoService.SearchMemosSemantic is not implemented"))
 }
 
 func (UnimplementedMemoServiceHandler) GetMemo(context.Context, *connect.Request[v1.GetMemoRequest]) (*connect.Response[v1.Memo], error) {

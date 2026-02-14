@@ -312,6 +312,17 @@
     },
     "my-account": "My Account",
     "preference": "Preferences",
+    "ai": "AI",
+    "ai-section": {
+      "title": "Semantic Search (OpenAI)",
+      "base-url": "OpenAI base URL",
+      "model": "Embedding model",
+      "api-key": "OpenAI API key",
+      "api-key-stored": "Stored on server (encrypted)",
+      "api-key-missing": "Not configured yet",
+      "clear-key": "Clear stored API key",
+      "clear": "Clear"
+    },
     "preference-section": {
       "default-memo-sort-option": "Memo display time",
       "default-memo-visibility": "Default memo visibility",

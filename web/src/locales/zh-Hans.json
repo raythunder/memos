@@ -313,6 +313,17 @@
     },
     "my-account": "我的账号",
     "preference": "偏好设置",
+    "ai": "AI",
+    "ai-section": {
+      "title": "语义检索（OpenAI）",
+      "base-url": "OpenAI 基础 URL",
+      "model": "Embedding 模型",
+      "api-key": "OpenAI API Key",
+      "api-key-stored": "已在服务端加密保存",
+      "api-key-missing": "尚未配置",
+      "clear-key": "清空已保存 API Key",
+      "clear": "清空"
+    },
     "preference-section": {
       "default-memo-sort-option": "备忘录显示时间",
       "default-memo-visibility": "默认备忘录可见性",

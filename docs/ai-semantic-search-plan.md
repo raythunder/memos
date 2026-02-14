@@ -72,15 +72,32 @@ Add dedicated endpoint (do not overload `ListMemos`):
   - `page_size`
   - `page_token`
   - optional `filter`
-- Response fields:
-  - `memos`
-  - `scores` (or score in each item)
-  - `next_page_token`
+- Response type:
+  - Reuse `ListMemosResponse` for MVP (`memos`, `next_page_token`)
 
 Reasoning:
 
 - Keeps keyword and semantic responsibilities separated (SRP).
 - Avoids breaking existing clients (OCP).
+- Avoids introducing extra response schema during MVP (KISS).
+
+### 3.5 Runtime Configuration
+
+Current implementation supports two configuration paths:
+
+1. Admin frontend setting page (`Settings -> AI`)
+   - `openai_base_url`
+   - `openai_embedding_model`
+   - `openai_api_key` (write-only in API, encrypted before persistence)
+2. Environment variable fallback (backward compatibility):
+   - `MEMOS_OPENAI_API_KEY`
+   - `MEMOS_OPENAI_EMBEDDING_MODEL` (default: `text-embedding-3-small`)
+   - `MEMOS_OPENAI_BASE_URL` (default: `https://api.openai.com/v1`)
+
+Security note:
+
+- OpenAI API key is persisted as ciphertext in `system_setting` using server-side encryption (`enc:v1:*` payload format).
+- API key is never returned in plaintext from `GetInstanceSetting`.
 
 ## 4. Milestones and Checkpoints
 

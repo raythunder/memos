@@ -249,6 +249,14 @@ func (s *ConnectServiceHandler) ListMemos(ctx context.Context, req *connect.Requ
 	return connect.NewResponse(resp), nil
 }
 
+func (s *ConnectServiceHandler) SearchMemosSemantic(ctx context.Context, req *connect.Request[v1pb.SearchMemosSemanticRequest]) (*connect.Response[v1pb.ListMemosResponse], error) {
+	resp, err := s.APIV1Service.SearchMemosSemantic(ctx, req.Msg)
+	if err != nil {
+		return nil, convertGRPCError(err)
+	}
+	return connect.NewResponse(resp), nil
+}
+
 func (s *ConnectServiceHandler) GetMemo(ctx context.Context, req *connect.Request[v1pb.GetMemoRequest]) (*connect.Response[v1pb.Memo], error) {
 	resp, err := s.APIV1Service.GetMemo(ctx, req.Msg)
 	if err != nil {

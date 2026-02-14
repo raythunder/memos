@@ -201,4 +201,95 @@ func TestGetInstanceSetting(t *testing.T) {
 		require.Error(t, err)
 		require.Contains(t, err.Error(), "invalid instance setting name")
 	})
+
+	t.Run("GetInstanceSetting - ai setting requires admin", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		req := &v1pb.GetInstanceSettingRequest{
+			Name: "instance/settings/AI",
+		}
+		_, err := ts.Service.GetInstanceSetting(ctx, req)
+
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "user not authenticated")
+	})
+
+	t.Run("GetInstanceSetting - ai setting for admin hides api key", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		hostUser, err := ts.CreateHostUser(ctx, "ai-admin")
+		require.NoError(t, err)
+		userCtx := ts.CreateUserContext(ctx, hostUser.ID)
+
+		req := &v1pb.GetInstanceSettingRequest{
+			Name: "instance/settings/AI",
+		}
+		resp, err := ts.Service.GetInstanceSetting(userCtx, req)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.Equal(t, "instance/settings/AI", resp.Name)
+		require.NotNil(t, resp.GetAiSetting())
+		require.False(t, resp.GetAiSetting().GetOpenaiApiKeySet())
+		require.Empty(t, resp.GetAiSetting().GetOpenaiApiKey())
+	})
+}
+
+func TestUpdateInstanceAISetting(t *testing.T) {
+	ctx := context.Background()
+
+	t.Run("Update ai setting encrypts key and hides plaintext", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		hostUser, err := ts.CreateHostUser(ctx, "ai-admin")
+		require.NoError(t, err)
+		userCtx := ts.CreateUserContext(ctx, hostUser.ID)
+
+		updateReq := &v1pb.UpdateInstanceSettingRequest{
+			Setting: &v1pb.InstanceSetting{
+				Name: "instance/settings/AI",
+				Value: &v1pb.InstanceSetting_AiSetting{
+					AiSetting: &v1pb.InstanceSetting_AISetting{
+						OpenaiBaseUrl:        "https://api.openai.com/v1",
+						OpenaiEmbeddingModel: "text-embedding-3-small",
+						OpenaiApiKey:         "sk-test-secret",
+					},
+				},
+			},
+		}
+		resp, err := ts.Service.UpdateInstanceSetting(userCtx, updateReq)
+		require.NoError(t, err)
+		require.NotNil(t, resp)
+		require.NotNil(t, resp.GetAiSetting())
+		require.True(t, resp.GetAiSetting().GetOpenaiApiKeySet())
+		require.Empty(t, resp.GetAiSetting().GetOpenaiApiKey())
+
+		aiSetting, err := ts.Store.GetInstanceAISetting(ctx)
+		require.NoError(t, err)
+		require.NotEmpty(t, aiSetting.GetOpenaiApiKeyEncrypted())
+		require.NotEqual(t, "sk-test-secret", aiSetting.GetOpenaiApiKeyEncrypted())
+
+		// Updating base/model without api key should keep stored ciphertext.
+		prevCipherText := aiSetting.GetOpenaiApiKeyEncrypted()
+		updateReq.Setting.GetAiSetting().OpenaiApiKey = ""
+		updateReq.Setting.GetAiSetting().OpenaiEmbeddingModel = "text-embedding-3-large"
+		_, err = ts.Service.UpdateInstanceSetting(userCtx, updateReq)
+		require.NoError(t, err)
+
+		aiSetting, err = ts.Store.GetInstanceAISetting(ctx)
+		require.NoError(t, err)
+		require.Equal(t, prevCipherText, aiSetting.GetOpenaiApiKeyEncrypted())
+		require.Equal(t, "text-embedding-3-large", aiSetting.GetOpenaiEmbeddingModel())
+
+		// Clearing api key should remove ciphertext.
+		updateReq.Setting.GetAiSetting().ClearOpenaiApiKey = true
+		_, err = ts.Service.UpdateInstanceSetting(userCtx, updateReq)
+		require.NoError(t, err)
+
+		aiSetting, err = ts.Store.GetInstanceAISetting(ctx)
+		require.NoError(t, err)
+		require.Empty(t, aiSetting.GetOpenaiApiKeyEncrypted())
+	})
 }

@@ -1054,6 +1054,31 @@ paths:
                         application/json:
                             schema:
                                 $ref: '#/components/schemas/Status'
+    /api/v1/memos:searchSemantic:
+        post:
+            tags:
+                - MemoService
+            description: SearchMemosSemantic searches memos by semantic similarity.
+            operationId: MemoService_SearchMemosSemantic
+            requestBody:
+                content:
+                    application/json:
+                        schema:
+                            $ref: '#/components/schemas/SearchMemosSemanticRequest'
+                required: true
+            responses:
+                "200":
+                    description: OK
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/ListMemosResponse'
+                default:
+                    description: Default error response
+                    content:
+                        application/json:
+                            schema:
+                                $ref: '#/components/schemas/Status'
     /api/v1/users:
         get:
             tags:
@@ -2162,7 +2187,30 @@ components:
                     $ref: '#/components/schemas/InstanceSetting_StorageSetting'
                 memoRelatedSetting:
                     $ref: '#/components/schemas/InstanceSetting_MemoRelatedSetting'
+                aiSetting:
+                    $ref: '#/components/schemas/InstanceSetting_AISetting'
             description: An instance setting resource.
+        InstanceSetting_AISetting:
+            type: object
+            properties:
+                openaiBaseUrl:
+                    type: string
+                    description: openai_base_url is the base URL for OpenAI-compatible embedding API.
+                openaiEmbeddingModel:
+                    type: string
+                    description: openai_embedding_model is the embedding model name.
+                openaiApiKey:
+                    type: string
+                    description: |-
+                        openai_api_key is write-only plain text API key from frontend.
+                         It is encrypted before being persisted by backend.
+                openaiApiKeySet:
+                    type: boolean
+                    description: openai_api_key_set indicates if backend already has a stored API key.
+                clearOpenaiApiKey:
+                    type: boolean
+                    description: clear_openai_api_key clears stored API key when true.
+            description: AI configuration settings for semantic search.
         InstanceSetting_GeneralSetting:
             type: object
             properties:
@@ -2683,6 +2731,38 @@ components:
                     type: string
                     description: When the access token expires.
                     format: date-time
+        SearchMemosSemanticRequest:
+            required:
+                - query
+            type: object
+            properties:
+                query:
+                    type: string
+                    description: Required. Natural language query text.
+                pageSize:
+                    type: integer
+                    description: |-
+                        Optional. The maximum number of memos to return.
+                         If unspecified, at most 10 memos will be returned.
+                    format: int32
+                pageToken:
+                    type: string
+                    description: Optional. A page token, received from a previous `SearchMemosSemantic` call.
+                state:
+                    enum:
+                        - STATE_UNSPECIFIED
+                        - NORMAL
+                        - ARCHIVED
+                    type: string
+                    description: |-
+                        Optional. The state of the memos to search.
+                         Default to `NORMAL`. Set to `ARCHIVED` to search archived memos.
+                    format: enum
+                filter:
+                    type: string
+                    description: |-
+                        Optional. Additional CEL filter to narrow down semantic candidates.
+                         Refer to `Shortcut.filter`.
         SetMemoAttachmentsRequest:
             required:
                 - name

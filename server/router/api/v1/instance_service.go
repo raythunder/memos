@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"fmt"
+	"strings"
 
 	"github.com/pkg/errors"
 	"google.golang.org/grpc/codes"
@@ -46,6 +47,8 @@ func (s *APIV1Service) GetInstanceSetting(ctx context.Context, request *v1pb.Get
 		_, err = s.Store.GetInstanceMemoRelatedSetting(ctx)
 	case storepb.InstanceSettingKey_STORAGE:
 		_, err = s.Store.GetInstanceStorageSetting(ctx)
+	case storepb.InstanceSettingKey_AI:
+		_, err = s.Store.GetInstanceAISetting(ctx)
 	default:
 		return nil, status.Errorf(codes.InvalidArgument, "unsupported instance setting key: %v", instanceSettingKey)
 	}
@@ -63,8 +66,8 @@ func (s *APIV1Service) GetInstanceSetting(ctx context.Context, request *v1pb.Get
 		return nil, status.Errorf(codes.NotFound, "instance setting not found")
 	}
 
-	// For storage setting, only admin can get it.
-	if instanceSetting.Key == storepb.InstanceSettingKey_STORAGE {
+	// For sensitive settings, only admin can get it.
+	if instanceSetting.Key == storepb.InstanceSettingKey_STORAGE || instanceSetting.Key == storepb.InstanceSettingKey_AI {
 		user, err := s.fetchCurrentUser(ctx)
 		if err != nil {
 			return nil, status.Errorf(codes.Internal, "failed to get current user: %v", err)
@@ -95,8 +98,27 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 	// TODO: Apply update_mask if specified
 	_ = request.UpdateMask
 
-	updateSetting := convertInstanceSettingToStore(request.Setting)
-	instanceSetting, err := s.Store.UpsertInstanceSetting(ctx, updateSetting)
+	if request.Setting == nil {
+		return nil, status.Errorf(codes.InvalidArgument, "setting is required")
+	}
+	settingKeyString, err := ExtractInstanceSettingKeyFromName(request.Setting.Name)
+	if err != nil {
+		return nil, status.Errorf(codes.InvalidArgument, "invalid instance setting name: %v", err)
+	}
+	settingKeyValue, ok := storepb.InstanceSettingKey_value[settingKeyString]
+	if !ok || storepb.InstanceSettingKey(settingKeyValue) == storepb.InstanceSettingKey_INSTANCE_SETTING_KEY_UNSPECIFIED {
+		return nil, status.Errorf(codes.InvalidArgument, "unsupported instance setting key: %s", settingKeyString)
+	}
+	settingKey := storepb.InstanceSettingKey(settingKeyValue)
+
+	var instanceSetting *storepb.InstanceSetting
+	switch settingKey {
+	case storepb.InstanceSettingKey_AI:
+		instanceSetting, err = s.upsertInstanceAISetting(ctx, request.Setting.GetAiSetting())
+	default:
+		updateSetting := convertInstanceSettingToStore(request.Setting)
+		instanceSetting, err = s.Store.UpsertInstanceSetting(ctx, updateSetting)
+	}
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to upsert instance setting: %v", err)
 	}
@@ -120,6 +142,10 @@ func convertInstanceSettingFromStore(setting *storepb.InstanceSetting) *v1pb.Ins
 	case *storepb.InstanceSetting_MemoRelatedSetting:
 		instanceSetting.Value = &v1pb.InstanceSetting_MemoRelatedSetting_{
 			MemoRelatedSetting: convertInstanceMemoRelatedSettingFromStore(setting.GetMemoRelatedSetting()),
+		}
+	case *storepb.InstanceSetting_AiSetting:
+		instanceSetting.Value = &v1pb.InstanceSetting_AiSetting{
+			AiSetting: convertInstanceAISettingFromStore(setting.GetAiSetting()),
 		}
 	}
 	return instanceSetting
@@ -145,6 +171,10 @@ func convertInstanceSettingToStore(setting *v1pb.InstanceSetting) *storepb.Insta
 	case storepb.InstanceSettingKey_MEMO_RELATED:
 		instanceSetting.Value = &storepb.InstanceSetting_MemoRelatedSetting{
 			MemoRelatedSetting: convertInstanceMemoRelatedSettingToStore(setting.GetMemoRelatedSetting()),
+		}
+	case storepb.InstanceSettingKey_AI:
+		instanceSetting.Value = &storepb.InstanceSetting_AiSetting{
+			AiSetting: convertInstanceAISettingToStore(setting.GetAiSetting()),
 		}
 	default:
 		// Keep the default GeneralSetting value
@@ -267,6 +297,58 @@ func convertInstanceMemoRelatedSettingToStore(setting *v1pb.InstanceSetting_Memo
 		EnableDoubleClickEdit:    setting.EnableDoubleClickEdit,
 		Reactions:                setting.Reactions,
 	}
+}
+
+func convertInstanceAISettingFromStore(setting *storepb.InstanceAISetting) *v1pb.InstanceSetting_AISetting {
+	if setting == nil {
+		return nil
+	}
+	return &v1pb.InstanceSetting_AISetting{
+		OpenaiBaseUrl:        setting.OpenaiBaseUrl,
+		OpenaiEmbeddingModel: setting.OpenaiEmbeddingModel,
+		OpenaiApiKeySet:      setting.OpenaiApiKeyEncrypted != "",
+	}
+}
+
+func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *storepb.InstanceAISetting {
+	if setting == nil {
+		return nil
+	}
+	return &storepb.InstanceAISetting{
+		OpenaiBaseUrl:        setting.OpenaiBaseUrl,
+		OpenaiEmbeddingModel: setting.OpenaiEmbeddingModel,
+	}
+}
+
+func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1pb.InstanceSetting_AISetting) (*storepb.InstanceSetting, error) {
+	existingSetting, err := s.Store.GetInstanceAISetting(ctx)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get existing instance ai setting")
+	}
+
+	updatedSetting := &storepb.InstanceAISetting{}
+	if existingSetting != nil {
+		updatedSetting.OpenaiApiKeyEncrypted = existingSetting.OpenaiApiKeyEncrypted
+	}
+	if setting != nil {
+		updatedSetting.OpenaiBaseUrl = strings.TrimSpace(setting.OpenaiBaseUrl)
+		updatedSetting.OpenaiEmbeddingModel = strings.TrimSpace(setting.OpenaiEmbeddingModel)
+		if setting.ClearOpenaiApiKey {
+			updatedSetting.OpenaiApiKeyEncrypted = ""
+		}
+		if openaiAPIKey := strings.TrimSpace(setting.OpenaiApiKey); openaiAPIKey != "" {
+			encryptedAPIKey, err := encryptSensitiveValue(s.Secret, openaiAPIKey)
+			if err != nil {
+				return nil, errors.Wrap(err, "failed to encrypt openai api key")
+			}
+			updatedSetting.OpenaiApiKeyEncrypted = encryptedAPIKey
+		}
+	}
+
+	return s.Store.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
+		Key:   storepb.InstanceSettingKey_AI,
+		Value: &storepb.InstanceSetting_AiSetting{AiSetting: updatedSetting},
+	})
 }
 
 func (s *APIV1Service) GetInstanceAdmin(ctx context.Context) (*v1pb.User, error) {

@@ -28,6 +28,14 @@ service MemoService {
     option (google.api.http) = {get: "/api/v1/memos"};
     option (google.api.method_signature) = "";
   }
+  // SearchMemosSemantic searches memos by semantic similarity.
+  rpc SearchMemosSemantic(SearchMemosSemanticRequest) returns (ListMemosResponse) {
+    option (google.api.http) = {
+      post: "/api/v1/memos:searchSemantic"
+      body: "*"
+    };
+    option (google.api.method_signature) = "query";
+  }
   // GetMemo gets a memo.
   rpc GetMemo(GetMemoRequest) returns (Memo) {
     option (google.api.http) = {get: "/api/v1/{name=memos/*}"};
@@ -288,6 +296,26 @@ message ListMemosResponse {
   // A token that can be sent as `page_token` to retrieve the next page.
   // If this field is omitted, there are no subsequent pages.
   string next_page_token = 2;
+}
+
+message SearchMemosSemanticRequest {
+  // Required. Natural language query text.
+  string query = 1 [(google.api.field_behavior) = REQUIRED];
+
+  // Optional. The maximum number of memos to return.
+  // If unspecified, at most 10 memos will be returned.
+  int32 page_size = 2 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. A page token, received from a previous `SearchMemosSemantic` call.
+  string page_token = 3 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. The state of the memos to search.
+  // Default to `NORMAL`. Set to `ARCHIVED` to search archived memos.
+  State state = 4 [(google.api.field_behavior) = OPTIONAL];
+
+  // Optional. Additional CEL filter to narrow down semantic candidates.
+  // Refer to `Shortcut.filter`.
+  string filter = 5 [(google.api.field_behavior) = OPTIONAL];
 }
 
 message GetMemoRequest {

@@ -69,6 +69,7 @@ message InstanceSetting {
     GeneralSetting general_setting = 2;
     StorageSetting storage_setting = 3;
     MemoRelatedSetting memo_related_setting = 4;
+    AISetting ai_setting = 5;
   }
 
   // Enumeration of instance setting keys.
@@ -80,6 +81,8 @@ message InstanceSetting {
     STORAGE = 2;
     // MEMO_RELATED is the key for memo related settings.
     MEMO_RELATED = 3;
+    // AI is the key for AI related settings.
+    AI = 4;
   }
 
   // General instance settings configuration.
@@ -158,6 +161,21 @@ message InstanceSetting {
     bool enable_double_click_edit = 4;
     // reactions is the list of reactions.
     repeated string reactions = 7;
+  }
+
+  // AI configuration settings for semantic search.
+  message AISetting {
+    // openai_base_url is the base URL for OpenAI-compatible embedding API.
+    string openai_base_url = 1;
+    // openai_embedding_model is the embedding model name.
+    string openai_embedding_model = 2;
+    // openai_api_key is write-only plain text API key from frontend.
+    // It is encrypted before being persisted by backend.
+    string openai_api_key = 3;
+    // openai_api_key_set indicates if backend already has a stored API key.
+    bool openai_api_key_set = 4;
+    // clear_openai_api_key clears stored API key when true.
+    bool clear_openai_api_key = 5;
   }
 }
 

@@ -102,6 +102,7 @@ func (s *APIV1Service) CreateMemo(ctx context.Context, request *v1pb.CreateMemoR
 		}
 		return nil, err
 	}
+	s.scheduleMemoEmbeddingSync(memo.ID, memo.Content)
 
 	attachments := []*store.Attachment{}
 
@@ -174,19 +175,8 @@ func (s *APIV1Service) ListMemos(ctx context.Context, request *v1pb.ListMemosReq
 		memoFind.Filters = append(memoFind.Filters, request.Filter)
 	}
 
-	currentUser, err := s.fetchCurrentUser(ctx)
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to get user")
-	}
-	if currentUser == nil {
-		memoFind.VisibilityList = []store.Visibility{store.Public}
-	} else {
-		if memoFind.CreatorID == nil {
-			filter := fmt.Sprintf(`creator_id == %d || visibility in ["PUBLIC", "PROTECTED"]`, currentUser.ID)
-			memoFind.Filters = append(memoFind.Filters, filter)
-		} else if *memoFind.CreatorID != currentUser.ID {
-			memoFind.VisibilityList = []store.Visibility{store.Public, store.Protected}
-		}
+	if err := s.applyMemoVisibilityFilter(ctx, memoFind); err != nil {
+		return nil, err
 	}
 
 	instanceMemoRelatedSetting, err := s.Store.GetInstanceMemoRelatedSetting(ctx)
@@ -219,7 +209,6 @@ func (s *APIV1Service) ListMemos(ctx context.Context, request *v1pb.ListMemosReq
 		return nil, status.Errorf(codes.Internal, "failed to list memos: %v", err)
 	}
 
-	memoMessages := []*v1pb.Memo{}
 	nextPageToken := ""
 	if len(memos) == limitPlusOne {
 		memos = memos[:limit]
@@ -231,52 +220,15 @@ func (s *APIV1Service) ListMemos(ctx context.Context, request *v1pb.ListMemosReq
 
 	if len(memos) == 0 {
 		response := &v1pb.ListMemosResponse{
-			Memos:         memoMessages,
+			Memos:         []*v1pb.Memo{},
 			NextPageToken: nextPageToken,
 		}
 		return response, nil
 	}
 
-	reactionMap := make(map[string][]*store.Reaction)
-	contentIDs := make([]string, 0, len(memos))
-
-	attachmentMap := make(map[int32][]*store.Attachment)
-	memoIDs := make([]int32, 0, len(memos))
-
-	for _, m := range memos {
-		contentIDs = append(contentIDs, fmt.Sprintf("%s%s", MemoNamePrefix, m.UID))
-		memoIDs = append(memoIDs, m.ID)
-	}
-
-	// REACTIONS
-	reactions, err := s.Store.ListReactions(ctx, &store.FindReaction{ContentIDList: contentIDs})
+	memoMessages, err := s.convertMemoListToMessages(ctx, memos)
 	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list reactions")
-	}
-	for _, reaction := range reactions {
-		reactionMap[reaction.ContentID] = append(reactionMap[reaction.ContentID], reaction)
-	}
-
-	// ATTACHMENTS
-	attachments, err := s.Store.ListAttachments(ctx, &store.FindAttachment{MemoIDList: memoIDs})
-	if err != nil {
-		return nil, status.Errorf(codes.Internal, "failed to list attachments")
-	}
-	for _, attachment := range attachments {
-		attachmentMap[*attachment.MemoID] = append(attachmentMap[*attachment.MemoID], attachment)
-	}
-
-	for _, memo := range memos {
-		memoName := fmt.Sprintf("%s%s", MemoNamePrefix, memo.UID)
-		reactions := reactionMap[memoName]
-		attachments := attachmentMap[memo.ID]
-
-		memoMessage, err := s.convertMemoFromStore(ctx, memo, reactions, attachments)
-		if err != nil {
-			return nil, errors.Wrap(err, "failed to convert memo")
-		}
-
-		memoMessages = append(memoMessages, memoMessage)
+		return nil, err
 	}
 
 	response := &v1pb.ListMemosResponse{
@@ -366,6 +318,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 	update := &store.UpdateMemo{
 		ID: memo.ID,
 	}
+	contentUpdated := false
 	for _, path := range request.UpdateMask.Paths {
 		if path == "content" {
 			contentLengthLimit, err := s.getContentLengthLimit(ctx)
@@ -381,6 +334,7 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 			}
 			update.Content = &memo.Content
 			update.Payload = memo.Payload
+			contentUpdated = true
 		} else if path == "visibility" {
 			instanceMemoRelatedSetting, err := s.Store.GetInstanceMemoRelatedSetting(ctx)
 			if err != nil {
@@ -441,6 +395,9 @@ func (s *APIV1Service) UpdateMemo(ctx context.Context, request *v1pb.UpdateMemoR
 
 	if err = s.Store.UpdateMemo(ctx, update); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to update memo")
+	}
+	if contentUpdated {
+		s.scheduleMemoEmbeddingSync(memo.ID, memo.Content)
 	}
 
 	memo, err = s.Store.GetMemo(ctx, &store.FindMemo{
@@ -538,6 +495,7 @@ func (s *APIV1Service) DeleteMemo(ctx context.Context, request *v1pb.DeleteMemoR
 	if err = s.Store.DeleteMemo(ctx, &store.DeleteMemo{ID: memo.ID}); err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to delete memo")
 	}
+	s.scheduleMemoEmbeddingDelete(memo.ID)
 
 	return &emptypb.Empty{}, nil
 }

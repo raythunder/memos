@@ -14,6 +14,8 @@ enum InstanceSettingKey {
   STORAGE = 3;
   // MEMO_RELATED is the key for memo related settings.
   MEMO_RELATED = 4;
+  // AI is the key for AI related settings.
+  AI = 5;
 }
 
 message InstanceSetting {
@@ -23,6 +25,7 @@ message InstanceSetting {
     InstanceGeneralSetting general_setting = 3;
     InstanceStorageSetting storage_setting = 4;
     InstanceMemoRelatedSetting memo_related_setting = 5;
+    InstanceAISetting ai_setting = 6;
   }
 }
 
@@ -102,4 +105,13 @@ message InstanceMemoRelatedSetting {
   bool enable_double_click_edit = 4;
   // reactions is the list of reactions.
   repeated string reactions = 7;
+}
+
+message InstanceAISetting {
+  // openai_base_url is the base URL for OpenAI-compatible embedding API.
+  string openai_base_url = 1;
+  // openai_embedding_model is the embedding model name.
+  string openai_embedding_model = 2;
+  // openai_api_key_encrypted stores encrypted API key ciphertext.
+  string openai_api_key_encrypted = 3;
 }
