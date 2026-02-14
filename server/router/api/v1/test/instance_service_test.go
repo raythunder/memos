@@ -252,9 +252,12 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 				Name: "instance/settings/AI",
 				Value: &v1pb.InstanceSetting_AiSetting{
 					AiSetting: &v1pb.InstanceSetting_AISetting{
-						OpenaiBaseUrl:        "https://api.openai.com/v1",
-						OpenaiEmbeddingModel: "text-embedding-3-small",
-						OpenaiApiKey:         "sk-test-secret",
+						OpenaiBaseUrl:                 "https://api.openai.com/v1",
+						OpenaiEmbeddingModel:          "text-embedding-3-small",
+						OpenaiApiKey:                  "sk-test-secret",
+						OpenaiEmbeddingMaxRetry:       3,
+						OpenaiEmbeddingRetryBackoffMs: 150,
+						SemanticEmbeddingConcurrency:  10,
 					},
 				},
 			},
@@ -270,6 +273,9 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 		require.NoError(t, err)
 		require.NotEmpty(t, aiSetting.GetOpenaiApiKeyEncrypted())
 		require.NotEqual(t, "sk-test-secret", aiSetting.GetOpenaiApiKeyEncrypted())
+		require.Equal(t, int32(3), aiSetting.GetOpenaiEmbeddingMaxRetry())
+		require.Equal(t, int32(150), aiSetting.GetOpenaiEmbeddingRetryBackoffMs())
+		require.Equal(t, int32(10), aiSetting.GetSemanticEmbeddingConcurrency())
 
 		// Updating base/model without api key should keep stored ciphertext.
 		prevCipherText := aiSetting.GetOpenaiApiKeyEncrypted()
@@ -282,6 +288,9 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, prevCipherText, aiSetting.GetOpenaiApiKeyEncrypted())
 		require.Equal(t, "text-embedding-3-large", aiSetting.GetOpenaiEmbeddingModel())
+		require.Equal(t, int32(3), aiSetting.GetOpenaiEmbeddingMaxRetry())
+		require.Equal(t, int32(150), aiSetting.GetOpenaiEmbeddingRetryBackoffMs())
+		require.Equal(t, int32(10), aiSetting.GetSemanticEmbeddingConcurrency())
 
 		// Clearing api key should remove ciphertext.
 		updateReq.Setting.GetAiSetting().ClearOpenaiApiKey = true

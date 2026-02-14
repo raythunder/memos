@@ -114,4 +114,10 @@ message InstanceAISetting {
   string openai_embedding_model = 2;
   // openai_api_key_encrypted stores encrypted API key ciphertext.
   string openai_api_key_encrypted = 3;
+  // openai_embedding_max_retry controls max retry count for transient OpenAI embedding failures.
+  int32 openai_embedding_max_retry = 4;
+  // openai_embedding_retry_backoff_ms controls retry backoff base in milliseconds.
+  int32 openai_embedding_retry_backoff_ms = 5;
+  // semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
+  int32 semantic_embedding_concurrency = 6;
 }

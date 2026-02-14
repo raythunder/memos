@@ -758,8 +758,17 @@ type InstanceSetting_AISetting struct {
 	OpenaiApiKeySet bool `protobuf:"varint,4,opt,name=openai_api_key_set,json=openaiApiKeySet,proto3" json:"openai_api_key_set,omitempty"`
 	// clear_openai_api_key clears stored API key when true.
 	ClearOpenaiApiKey bool `protobuf:"varint,5,opt,name=clear_openai_api_key,json=clearOpenaiApiKey,proto3" json:"clear_openai_api_key,omitempty"`
-	unknownFields     protoimpl.UnknownFields
-	sizeCache         protoimpl.SizeCache
+	// openai_embedding_max_retry controls max retry count for transient OpenAI embedding failures.
+	// Value <= 0 means using backend default/fallback behavior.
+	OpenaiEmbeddingMaxRetry int32 `protobuf:"varint,6,opt,name=openai_embedding_max_retry,json=openaiEmbeddingMaxRetry,proto3" json:"openai_embedding_max_retry,omitempty"`
+	// openai_embedding_retry_backoff_ms controls retry backoff base in milliseconds.
+	// Value <= 0 means using backend default/fallback behavior.
+	OpenaiEmbeddingRetryBackoffMs int32 `protobuf:"varint,7,opt,name=openai_embedding_retry_backoff_ms,json=openaiEmbeddingRetryBackoffMs,proto3" json:"openai_embedding_retry_backoff_ms,omitempty"`
+	// semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
+	// Value <= 0 means using backend default/fallback behavior.
+	SemanticEmbeddingConcurrency int32 `protobuf:"varint,8,opt,name=semantic_embedding_concurrency,json=semanticEmbeddingConcurrency,proto3" json:"semantic_embedding_concurrency,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *InstanceSetting_AISetting) Reset() {
@@ -825,6 +834,27 @@ func (x *InstanceSetting_AISetting) GetClearOpenaiApiKey() bool {
 		return x.ClearOpenaiApiKey
 	}
 	return false
+}
+
+func (x *InstanceSetting_AISetting) GetOpenaiEmbeddingMaxRetry() int32 {
+	if x != nil {
+		return x.OpenaiEmbeddingMaxRetry
+	}
+	return 0
+}
+
+func (x *InstanceSetting_AISetting) GetOpenaiEmbeddingRetryBackoffMs() int32 {
+	if x != nil {
+		return x.OpenaiEmbeddingRetryBackoffMs
+	}
+	return 0
+}
+
+func (x *InstanceSetting_AISetting) GetSemanticEmbeddingConcurrency() int32 {
+	if x != nil {
+		return x.SemanticEmbeddingConcurrency
+	}
+	return 0
 }
 
 // Custom profile configuration for instance branding.
@@ -984,7 +1014,7 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x04demo\x18\x03 \x01(\bR\x04demo\x12!\n" +
 	"\finstance_url\x18\x06 \x01(\tR\vinstanceUrl\x12(\n" +
 	"\x05admin\x18\a \x01(\v2\x12.memos.api.v1.UserR\x05admin\"\x1b\n" +
-	"\x19GetInstanceProfileRequest\"\xdb\x11\n" +
+	"\x19GetInstanceProfileRequest\"\xa8\x13\n" +
 	"\x0fInstanceSetting\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12W\n" +
 	"\x0fgeneral_setting\x18\x02 \x01(\v2,.memos.api.v1.InstanceSetting.GeneralSettingH\x00R\x0egeneralSetting\x12W\n" +
@@ -1027,13 +1057,16 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x18display_with_update_time\x18\x02 \x01(\bR\x15displayWithUpdateTime\x120\n" +
 	"\x14content_length_limit\x18\x03 \x01(\x05R\x12contentLengthLimit\x127\n" +
 	"\x18enable_double_click_edit\x18\x04 \x01(\bR\x15enableDoubleClickEdit\x12\x1c\n" +
-	"\treactions\x18\a \x03(\tR\treactions\x1a\xed\x01\n" +
+	"\treactions\x18\a \x03(\tR\treactions\x1a\xba\x03\n" +
 	"\tAISetting\x12&\n" +
 	"\x0fopenai_base_url\x18\x01 \x01(\tR\ropenaiBaseUrl\x124\n" +
 	"\x16openai_embedding_model\x18\x02 \x01(\tR\x14openaiEmbeddingModel\x12$\n" +
 	"\x0eopenai_api_key\x18\x03 \x01(\tR\fopenaiApiKey\x12+\n" +
 	"\x12openai_api_key_set\x18\x04 \x01(\bR\x0fopenaiApiKeySet\x12/\n" +
-	"\x14clear_openai_api_key\x18\x05 \x01(\bR\x11clearOpenaiApiKey\"N\n" +
+	"\x14clear_openai_api_key\x18\x05 \x01(\bR\x11clearOpenaiApiKey\x12;\n" +
+	"\x1aopenai_embedding_max_retry\x18\x06 \x01(\x05R\x17openaiEmbeddingMaxRetry\x12H\n" +
+	"!openai_embedding_retry_backoff_ms\x18\a \x01(\x05R\x1dopenaiEmbeddingRetryBackoffMs\x12D\n" +
+	"\x1esemantic_embedding_concurrency\x18\b \x01(\x05R\x1csemanticEmbeddingConcurrency\"N\n" +
 	"\x03Key\x12\x13\n" +
 	"\x0fKEY_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aGENERAL\x10\x01\x12\v\n" +

@@ -25,14 +25,20 @@ Semantic embedding config resolves in this order:
    - `openai_base_url`
    - `openai_embedding_model`
    - `openai_api_key` (stored as encrypted value)
+   - `openai_embedding_max_retry`
+   - `openai_embedding_retry_backoff_ms`
+   - `semantic_embedding_concurrency`
 2. Environment fallback (when UI field is empty)
    - `MEMOS_OPENAI_BASE_URL`
    - `MEMOS_OPENAI_EMBEDDING_MODEL`
    - `MEMOS_OPENAI_API_KEY`
+   - `MEMOS_OPENAI_EMBEDDING_MAX_RETRY`
+   - `MEMOS_OPENAI_EMBEDDING_RETRY_BACKOFF_MS`
+   - `MEMOS_SEMANTIC_EMBEDDING_CONCURRENCY`
 
 OpenAI request tuning envs (optional):
 
-- `MEMOS_OPENAI_EMBEDDING_MAX_RETRY` (default: `2`, allows `0` to disable retries)
+- `MEMOS_OPENAI_EMBEDDING_MAX_RETRY` (default: `2`)
 - `MEMOS_OPENAI_EMBEDDING_RETRY_BACKOFF_MS` (default: `100`)
 
 Security notes:

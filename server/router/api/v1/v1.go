@@ -22,8 +22,8 @@ import (
 )
 
 const (
-	semanticEmbeddingConcurrencyEnv     = "MEMOS_SEMANTIC_EMBEDDING_CONCURRENCY"
-	defaultEmbeddingRefreshConcurrency  = int64(8)
+	semanticEmbeddingConcurrencyEnv    = "MEMOS_SEMANTIC_EMBEDDING_CONCURRENCY"
+	defaultEmbeddingRefreshConcurrency = int64(8)
 )
 
 type APIV1Service struct {
@@ -54,19 +54,30 @@ func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store
 	markdownService := markdown.NewService(
 		markdown.WithTagExtension(),
 	)
-	embeddingConcurrency := resolveEmbeddingRefreshConcurrency()
+	embeddingConcurrency := resolveEmbeddingRefreshConcurrency(context.Background(), store)
 	return &APIV1Service{
 		Secret:             secret,
 		Profile:            profile,
 		Store:              store,
 		MarkdownService:    markdownService,
-		thumbnailSemaphore: semaphore.NewWeighted(3), // Limit to 3 concurrent thumbnail generations
+		thumbnailSemaphore: semaphore.NewWeighted(3),                    // Limit to 3 concurrent thumbnail generations
 		embeddingSemaphore: semaphore.NewWeighted(embeddingConcurrency), // Limit embedding refresh concurrency
 	}
 }
 
-func resolveEmbeddingRefreshConcurrency() int64 {
-	raw := strings.TrimSpace(os.Getenv(semanticEmbeddingConcurrencyEnv))
+func resolveEmbeddingRefreshConcurrency(ctx context.Context, stores *store.Store) int64 {
+	if stores != nil {
+		aiSetting, err := stores.GetInstanceAISetting(ctx)
+		if err != nil {
+			slog.Warn("failed to load AI setting for embedding concurrency, fallback to env/default", "error", err)
+		} else if aiSetting != nil && aiSetting.GetSemanticEmbeddingConcurrency() > 0 {
+			return int64(aiSetting.GetSemanticEmbeddingConcurrency())
+		}
+	}
+	return parseEmbeddingRefreshConcurrencyFromEnv(strings.TrimSpace(os.Getenv(semanticEmbeddingConcurrencyEnv)))
+}
+
+func parseEmbeddingRefreshConcurrencyFromEnv(raw string) int64 {
 	if raw == "" {
 		return defaultEmbeddingRefreshConcurrency
 	}

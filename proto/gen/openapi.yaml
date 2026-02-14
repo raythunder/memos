@@ -2210,6 +2210,24 @@ components:
                 clearOpenaiApiKey:
                     type: boolean
                     description: clear_openai_api_key clears stored API key when true.
+                openaiEmbeddingMaxRetry:
+                    type: integer
+                    description: |-
+                        openai_embedding_max_retry controls max retry count for transient OpenAI embedding failures.
+                         Value <= 0 means using backend default/fallback behavior.
+                    format: int32
+                openaiEmbeddingRetryBackoffMs:
+                    type: integer
+                    description: |-
+                        openai_embedding_retry_backoff_ms controls retry backoff base in milliseconds.
+                         Value <= 0 means using backend default/fallback behavior.
+                    format: int32
+                semanticEmbeddingConcurrency:
+                    type: integer
+                    description: |-
+                        semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
+                         Value <= 0 means using backend default/fallback behavior.
+                    format: int32
             description: AI configuration settings for semantic search.
         InstanceSetting_GeneralSetting:
             type: object

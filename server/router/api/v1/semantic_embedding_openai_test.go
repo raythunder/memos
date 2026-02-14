@@ -80,6 +80,21 @@ func TestNewOpenAIEmbeddingClientRequireAPIKey(t *testing.T) {
 	require.Contains(t, err.Error(), "openai api key is not configured")
 }
 
+func TestNewOpenAIEmbeddingClientRetryConfigFromSetting(t *testing.T) {
+	t.Parallel()
+
+	client, err := newOpenAIEmbeddingClient(&openAIEmbeddingConfig{
+		baseURL:   "https://api.openai.com/v1",
+		apiKey:    "sk-test",
+		model:     "text-embedding-3-small",
+		maxRetry:  4,
+		backoffMs: 250,
+	})
+	require.NoError(t, err)
+	require.Equal(t, 4, client.maxRetry)
+	require.Equal(t, 250*time.Millisecond, client.backoff)
+}
+
 func TestOpenAIEmbeddingClientRetryOnServerError(t *testing.T) {
 	t.Parallel()
 
@@ -159,9 +174,9 @@ func TestParseOpenAIEmbeddingMaxRetry(t *testing.T) {
 			expected: 5,
 		},
 		{
-			name:     "zero is valid",
+			name:     "zero falls back",
 			input:    "0",
-			expected: 0,
+			expected: openAIEmbeddingMaxRetry,
 		},
 		{
 			name:     "negative falls back",
@@ -183,6 +198,73 @@ func TestParseOpenAIEmbeddingMaxRetry(t *testing.T) {
 			require.Equal(t, testCase.expected, actual)
 		})
 	}
+}
+
+func TestResolveOpenAIEmbeddingRetryConfig(t *testing.T) {
+	testCases := []struct {
+		name             string
+		settingMaxRetry  int32
+		settingBackoffMS int32
+		envMaxRetry      string
+		envBackoffMS     string
+		expectedMaxRetry int
+		expectedBackoff  time.Duration
+	}{
+		{
+			name:             "setting values override env",
+			settingMaxRetry:  4,
+			settingBackoffMS: 250,
+			envMaxRetry:      "6",
+			envBackoffMS:     "300",
+			expectedMaxRetry: 4,
+			expectedBackoff:  250 * time.Millisecond,
+		},
+		{
+			name:             "fallback to env when setting missing",
+			settingMaxRetry:  0,
+			settingBackoffMS: 0,
+			envMaxRetry:      "5",
+			envBackoffMS:     "220",
+			expectedMaxRetry: 5,
+			expectedBackoff:  220 * time.Millisecond,
+		},
+		{
+			name:             "fallback to default when both missing",
+			settingMaxRetry:  0,
+			settingBackoffMS: 0,
+			envMaxRetry:      "",
+			envBackoffMS:     "",
+			expectedMaxRetry: openAIEmbeddingMaxRetry,
+			expectedBackoff:  openAIEmbeddingBackoff,
+		},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Setenv(openAIEmbeddingMaxRetryEnv, testCase.envMaxRetry)
+			t.Setenv(openAIEmbeddingBackoffMSEnv, testCase.envBackoffMS)
+			actualMaxRetry, actualBackoff := resolveOpenAIEmbeddingRetryConfig(testCase.settingMaxRetry, testCase.settingBackoffMS)
+			require.Equal(t, testCase.expectedMaxRetry, actualMaxRetry)
+			require.Equal(t, testCase.expectedBackoff, actualBackoff)
+		})
+	}
+}
+
+func TestParseOpenAIEmbeddingMaxRetryFromSetting(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, 0, parseOpenAIEmbeddingMaxRetryFromSetting(0))
+	require.Equal(t, 0, parseOpenAIEmbeddingMaxRetryFromSetting(-1))
+	require.Equal(t, 3, parseOpenAIEmbeddingMaxRetryFromSetting(3))
+}
+
+func TestParseOpenAIEmbeddingRetryBackoffFromSetting(t *testing.T) {
+	t.Parallel()
+
+	require.Equal(t, time.Duration(0), parseOpenAIEmbeddingRetryBackoffFromSetting(0))
+	require.Equal(t, time.Duration(0), parseOpenAIEmbeddingRetryBackoffFromSetting(-1))
+	require.Equal(t, 150*time.Millisecond, parseOpenAIEmbeddingRetryBackoffFromSetting(150))
 }
 
 func TestParseOpenAIEmbeddingRetryBackoff(t *testing.T) {

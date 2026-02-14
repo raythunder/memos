@@ -89,6 +89,9 @@ Current implementation supports two configuration paths:
    - `openai_base_url`
    - `openai_embedding_model`
    - `openai_api_key` (write-only in API, encrypted before persistence)
+   - `openai_embedding_max_retry`
+   - `openai_embedding_retry_backoff_ms`
+   - `semantic_embedding_concurrency`
 2. Environment variable fallback (backward compatibility):
    - `MEMOS_OPENAI_API_KEY`
    - `MEMOS_OPENAI_EMBEDDING_MODEL` (default: `text-embedding-3-small`)

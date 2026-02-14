@@ -176,6 +176,15 @@ message InstanceSetting {
     bool openai_api_key_set = 4;
     // clear_openai_api_key clears stored API key when true.
     bool clear_openai_api_key = 5;
+    // openai_embedding_max_retry controls max retry count for transient OpenAI embedding failures.
+    // Value <= 0 means using backend default/fallback behavior.
+    int32 openai_embedding_max_retry = 6;
+    // openai_embedding_retry_backoff_ms controls retry backoff base in milliseconds.
+    // Value <= 0 means using backend default/fallback behavior.
+    int32 openai_embedding_retry_backoff_ms = 7;
+    // semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
+    // Value <= 0 means using backend default/fallback behavior.
+    int32 semantic_embedding_concurrency = 8;
   }
 }
 

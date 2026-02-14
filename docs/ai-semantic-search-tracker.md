@@ -48,6 +48,7 @@ Status enum:
 ### Frontend
 
 - [x] Add admin AI setting page (`Settings -> AI`) for OpenAI config
+- [x] Add AI tuning fields (`max_retry`, `retry_backoff_ms`, `embedding_concurrency`)
 - [x] Add semantic mode in `SearchBar`
 - [x] Add semantic query hook in `web/src/hooks/useMemoQueries.ts`
 - [x] Add semantic result rendering and fallback states
@@ -489,7 +490,7 @@ Next step:
 - Owner: @raythunder + Codex
 - What changed:
   - Added runtime env knobs for OpenAI embedding retry strategy:
-    - `MEMOS_OPENAI_EMBEDDING_MAX_RETRY` (default `2`, supports `0`)
+    - `MEMOS_OPENAI_EMBEDDING_MAX_RETRY` (default `2`)
     - `MEMOS_OPENAI_EMBEDDING_RETRY_BACKOFF_MS` (default `100`)
   - Updated embedding client to use instance-level retry settings instead of hardcoded constants.
   - Added parser tests for retry count and backoff fallbacks.
@@ -505,6 +506,43 @@ Next step:
   - aggressive retry/backoff values can increase tail latency under sustained upstream instability.
 - Next step:
   - run staging smoke with tuned values and compare latency/error tradeoff.
+
+#### 2026-02-14 (AI settings UI for tuning knobs)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Extended AI settings schema/contracts with three tuning fields:
+    - `openai_embedding_max_retry`
+    - `openai_embedding_retry_backoff_ms`
+    - `semantic_embedding_concurrency`
+  - Updated backend conversion/persistence and config loading:
+    - UI setting takes priority
+    - env remains fallback
+  - Added AI settings form inputs for these fields in frontend.
+  - Added/updated tests for config parsing and instance-setting persistence.
+- Files:
+  - `proto/api/v1/instance_service.proto`
+  - `proto/store/instance_setting.proto`
+  - `server/router/api/v1/instance_service.go`
+  - `server/router/api/v1/v1.go`
+  - `server/router/api/v1/v1_semantic_config_test.go`
+  - `server/router/api/v1/semantic_embedding_openai.go`
+  - `server/router/api/v1/semantic_embedding_openai_test.go`
+  - `server/router/api/v1/test/instance_service_test.go`
+  - `web/src/components/Settings/AISettings.tsx`
+  - `web/src/locales/en.json`
+  - `web/src/locales/zh-Hans.json`
+  - `docs/ai-semantic-search-operations.md`
+  - `docs/ai-semantic-search-plan.md`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `cd proto && buf generate`
+  - `go test ./server/router/api/v1/...`
+  - `cd web && pnpm lint`
+- Risks/blockers:
+  - `semantic_embedding_concurrency` is applied at service initialization; changing this value may require restart to fully apply.
+- Next step:
+  - perform one UI save/readback smoke test on `Settings -> AI` for the three new fields.
 
 ## 6. Local Manual Test Account
 

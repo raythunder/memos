@@ -748,8 +748,14 @@ type InstanceAISetting struct {
 	OpenaiEmbeddingModel string `protobuf:"bytes,2,opt,name=openai_embedding_model,json=openaiEmbeddingModel,proto3" json:"openai_embedding_model,omitempty"`
 	// openai_api_key_encrypted stores encrypted API key ciphertext.
 	OpenaiApiKeyEncrypted string `protobuf:"bytes,3,opt,name=openai_api_key_encrypted,json=openaiApiKeyEncrypted,proto3" json:"openai_api_key_encrypted,omitempty"`
-	unknownFields         protoimpl.UnknownFields
-	sizeCache             protoimpl.SizeCache
+	// openai_embedding_max_retry controls max retry count for transient OpenAI embedding failures.
+	OpenaiEmbeddingMaxRetry int32 `protobuf:"varint,4,opt,name=openai_embedding_max_retry,json=openaiEmbeddingMaxRetry,proto3" json:"openai_embedding_max_retry,omitempty"`
+	// openai_embedding_retry_backoff_ms controls retry backoff base in milliseconds.
+	OpenaiEmbeddingRetryBackoffMs int32 `protobuf:"varint,5,opt,name=openai_embedding_retry_backoff_ms,json=openaiEmbeddingRetryBackoffMs,proto3" json:"openai_embedding_retry_backoff_ms,omitempty"`
+	// semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
+	SemanticEmbeddingConcurrency int32 `protobuf:"varint,6,opt,name=semantic_embedding_concurrency,json=semanticEmbeddingConcurrency,proto3" json:"semantic_embedding_concurrency,omitempty"`
+	unknownFields                protoimpl.UnknownFields
+	sizeCache                    protoimpl.SizeCache
 }
 
 func (x *InstanceAISetting) Reset() {
@@ -801,6 +807,27 @@ func (x *InstanceAISetting) GetOpenaiApiKeyEncrypted() string {
 		return x.OpenaiApiKeyEncrypted
 	}
 	return ""
+}
+
+func (x *InstanceAISetting) GetOpenaiEmbeddingMaxRetry() int32 {
+	if x != nil {
+		return x.OpenaiEmbeddingMaxRetry
+	}
+	return 0
+}
+
+func (x *InstanceAISetting) GetOpenaiEmbeddingRetryBackoffMs() int32 {
+	if x != nil {
+		return x.OpenaiEmbeddingRetryBackoffMs
+	}
+	return 0
+}
+
+func (x *InstanceAISetting) GetSemanticEmbeddingConcurrency() int32 {
+	if x != nil {
+		return x.SemanticEmbeddingConcurrency
+	}
+	return 0
 }
 
 var File_store_instance_setting_proto protoreflect.FileDescriptor
@@ -856,11 +883,14 @@ const file_store_instance_setting_proto_rawDesc = "" +
 	"\x18display_with_update_time\x18\x02 \x01(\bR\x15displayWithUpdateTime\x120\n" +
 	"\x14content_length_limit\x18\x03 \x01(\x05R\x12contentLengthLimit\x127\n" +
 	"\x18enable_double_click_edit\x18\x04 \x01(\bR\x15enableDoubleClickEdit\x12\x1c\n" +
-	"\treactions\x18\a \x03(\tR\treactions\"\xaa\x01\n" +
+	"\treactions\x18\a \x03(\tR\treactions\"\xf7\x02\n" +
 	"\x11InstanceAISetting\x12&\n" +
 	"\x0fopenai_base_url\x18\x01 \x01(\tR\ropenaiBaseUrl\x124\n" +
 	"\x16openai_embedding_model\x18\x02 \x01(\tR\x14openaiEmbeddingModel\x127\n" +
-	"\x18openai_api_key_encrypted\x18\x03 \x01(\tR\x15openaiApiKeyEncrypted*y\n" +
+	"\x18openai_api_key_encrypted\x18\x03 \x01(\tR\x15openaiApiKeyEncrypted\x12;\n" +
+	"\x1aopenai_embedding_max_retry\x18\x04 \x01(\x05R\x17openaiEmbeddingMaxRetry\x12H\n" +
+	"!openai_embedding_retry_backoff_ms\x18\x05 \x01(\x05R\x1dopenaiEmbeddingRetryBackoffMs\x12D\n" +
+	"\x1esemantic_embedding_concurrency\x18\x06 \x01(\x05R\x1csemanticEmbeddingConcurrency*y\n" +
 	"\x12InstanceSettingKey\x12$\n" +
 	" INSTANCE_SETTING_KEY_UNSPECIFIED\x10\x00\x12\t\n" +
 	"\x05BASIC\x10\x01\x12\v\n" +

@@ -304,9 +304,12 @@ func convertInstanceAISettingFromStore(setting *storepb.InstanceAISetting) *v1pb
 		return nil
 	}
 	return &v1pb.InstanceSetting_AISetting{
-		OpenaiBaseUrl:        setting.OpenaiBaseUrl,
-		OpenaiEmbeddingModel: setting.OpenaiEmbeddingModel,
-		OpenaiApiKeySet:      setting.OpenaiApiKeyEncrypted != "",
+		OpenaiBaseUrl:                 setting.OpenaiBaseUrl,
+		OpenaiEmbeddingModel:          setting.OpenaiEmbeddingModel,
+		OpenaiApiKeySet:               setting.OpenaiApiKeyEncrypted != "",
+		OpenaiEmbeddingMaxRetry:       setting.OpenaiEmbeddingMaxRetry,
+		OpenaiEmbeddingRetryBackoffMs: setting.OpenaiEmbeddingRetryBackoffMs,
+		SemanticEmbeddingConcurrency:  setting.SemanticEmbeddingConcurrency,
 	}
 }
 
@@ -315,8 +318,11 @@ func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *s
 		return nil
 	}
 	return &storepb.InstanceAISetting{
-		OpenaiBaseUrl:        setting.OpenaiBaseUrl,
-		OpenaiEmbeddingModel: setting.OpenaiEmbeddingModel,
+		OpenaiBaseUrl:                 setting.OpenaiBaseUrl,
+		OpenaiEmbeddingModel:          setting.OpenaiEmbeddingModel,
+		OpenaiEmbeddingMaxRetry:       setting.OpenaiEmbeddingMaxRetry,
+		OpenaiEmbeddingRetryBackoffMs: setting.OpenaiEmbeddingRetryBackoffMs,
+		SemanticEmbeddingConcurrency:  setting.SemanticEmbeddingConcurrency,
 	}
 }
 
@@ -333,6 +339,9 @@ func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1p
 	if setting != nil {
 		updatedSetting.OpenaiBaseUrl = strings.TrimSpace(setting.OpenaiBaseUrl)
 		updatedSetting.OpenaiEmbeddingModel = strings.TrimSpace(setting.OpenaiEmbeddingModel)
+		updatedSetting.OpenaiEmbeddingMaxRetry = setting.OpenaiEmbeddingMaxRetry
+		updatedSetting.OpenaiEmbeddingRetryBackoffMs = setting.OpenaiEmbeddingRetryBackoffMs
+		updatedSetting.SemanticEmbeddingConcurrency = setting.SemanticEmbeddingConcurrency
 		if setting.ClearOpenaiApiKey {
 			updatedSetting.OpenaiApiKeyEncrypted = ""
 		}

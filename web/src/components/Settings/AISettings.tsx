@@ -42,7 +42,11 @@ const AISettings = () => {
       return true;
     }
     return (
-      aiSetting.openaiBaseUrl !== originalSetting.openaiBaseUrl || aiSetting.openaiEmbeddingModel !== originalSetting.openaiEmbeddingModel
+      aiSetting.openaiBaseUrl !== originalSetting.openaiBaseUrl ||
+      aiSetting.openaiEmbeddingModel !== originalSetting.openaiEmbeddingModel ||
+      aiSetting.openaiEmbeddingMaxRetry !== originalSetting.openaiEmbeddingMaxRetry ||
+      aiSetting.openaiEmbeddingRetryBackoffMs !== originalSetting.openaiEmbeddingRetryBackoffMs ||
+      aiSetting.semanticEmbeddingConcurrency !== originalSetting.semanticEmbeddingConcurrency
     );
   }, [aiSetting, originalSetting]);
 
@@ -91,6 +95,54 @@ const AISettings = () => {
             placeholder="text-embedding-3-small"
             value={aiSetting.openaiEmbeddingModel}
             onChange={(event) => updatePartialSetting({ openaiEmbeddingModel: event.target.value })}
+          />
+        </SettingRow>
+
+        <SettingRow label={t("setting.ai-section.max-retry")} description={t("setting.ai-section.max-retry-description")}>
+          <Input
+            className="w-80"
+            type="number"
+            min="0"
+            placeholder="2"
+            value={aiSetting.openaiEmbeddingMaxRetry === 0 ? "" : String(aiSetting.openaiEmbeddingMaxRetry)}
+            onChange={(event) =>
+              updatePartialSetting({
+                openaiEmbeddingMaxRetry: Number.parseInt(event.target.value, 10) || 0,
+              })
+            }
+          />
+        </SettingRow>
+
+        <SettingRow label={t("setting.ai-section.retry-backoff-ms")} description={t("setting.ai-section.retry-backoff-ms-description")}>
+          <Input
+            className="w-80"
+            type="number"
+            min="0"
+            placeholder="100"
+            value={aiSetting.openaiEmbeddingRetryBackoffMs === 0 ? "" : String(aiSetting.openaiEmbeddingRetryBackoffMs)}
+            onChange={(event) =>
+              updatePartialSetting({
+                openaiEmbeddingRetryBackoffMs: Number.parseInt(event.target.value, 10) || 0,
+              })
+            }
+          />
+        </SettingRow>
+
+        <SettingRow
+          label={t("setting.ai-section.embedding-concurrency")}
+          description={t("setting.ai-section.embedding-concurrency-description")}
+        >
+          <Input
+            className="w-80"
+            type="number"
+            min="0"
+            placeholder="8"
+            value={aiSetting.semanticEmbeddingConcurrency === 0 ? "" : String(aiSetting.semanticEmbeddingConcurrency)}
+            onChange={(event) =>
+              updatePartialSetting({
+                semanticEmbeddingConcurrency: Number.parseInt(event.target.value, 10) || 0,
+              })
+            }
           />
         </SettingRow>
 
