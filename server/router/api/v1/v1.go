@@ -31,6 +31,9 @@ type APIV1Service struct {
 	Profile         *profile.Profile
 	Store           *store.Store
 	MarkdownService markdown.Service
+	// EmbeddingClientFactory overrides semantic embedding client creation.
+	// Used by tests to avoid external API dependency.
+	EmbeddingClientFactory func(ctx context.Context) (SemanticEmbeddingClient, error)
 
 	// thumbnailSemaphore limits concurrent thumbnail generation to prevent memory exhaustion
 	thumbnailSemaphore *semaphore.Weighted

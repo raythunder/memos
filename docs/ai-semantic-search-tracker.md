@@ -56,7 +56,7 @@ Status enum:
 - [x] Service tests for ACL and visibility
 - [x] Service tests for AI setting security (admin-only + API key no echo)
 - [x] Store tests for embedding CRUD
-- [ ] Integration smoke tests for semantic endpoint
+- [x] Integration smoke tests for semantic endpoint
 
 ## 4. Decision Log
 
@@ -66,6 +66,7 @@ Status enum:
 | 2026-02-14 | Primary DB uses PostgreSQL | Matches production target | Enables better vector scaling path |
 | 2026-02-14 | Keep keyword and semantic APIs separate | Reduce coupling and regression risk | Adds one new endpoint |
 | 2026-02-14 | AI config managed from frontend and encrypted at rest | Improve operability and secret safety | Adds `instance/settings/AI` contract and crypto helpers |
+| 2026-02-14 | Add injectable embedding client factory in API service | Improve testability without real OpenAI dependency | Enables deterministic semantic integration tests |
 
 ## 5. Iteration Log
 
@@ -209,6 +210,30 @@ Next step:
   - semantic e2e for real relevance quality still depends on PostgreSQL + valid OpenAI key in runtime.
 - Next step:
   - add integration smoke test for semantic endpoint in API layer (postgres path).
+
+#### 2026-02-14 (Semantic endpoint integration tests)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added semantic endpoint integration tests on PostgreSQL path:
+    - ranking correctness by cosine similarity
+    - visibility isolation (other user's private memo not leaked)
+    - configuration failure path returns `FailedPrecondition`
+  - Added injectable embedding client factory in API service for deterministic tests.
+  - Updated API test helper to respect `DRIVER` environment variable.
+- Files:
+  - `server/router/api/v1/semantic_embedding_openai.go`
+  - `server/router/api/v1/memo_semantic_service.go`
+  - `server/router/api/v1/v1.go`
+  - `server/router/api/v1/test/test_helper.go`
+  - `server/router/api/v1/test/memo_semantic_service_test.go`
+- Verification:
+  - `go test ./server/router/api/v1/... ./store/...`
+  - `DRIVER=postgres go test -v ./server/router/api/v1/test -run TestSearchMemosSemanticPostgres`
+- Risks/blockers:
+  - still need production-like relevance evaluation with real OpenAI vectors on 10k dataset.
+- Next step:
+  - run benchmark and profiling on 10k memos (M4) and decide whether to switch to pgvector index.
 
 ## 6. Local Manual Test Account
 

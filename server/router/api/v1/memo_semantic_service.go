@@ -28,7 +28,7 @@ func (s *APIV1Service) SearchMemosSemantic(ctx context.Context, request *v1pb.Se
 		return nil, status.Errorf(codes.FailedPrecondition, "semantic search only supports postgres driver")
 	}
 
-	embeddingClient, err := s.newOpenAIEmbeddingClient(ctx)
+	embeddingClient, err := s.getSemanticEmbeddingClient(ctx)
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "semantic search is not configured: %v", err)
 	}
@@ -214,7 +214,7 @@ func (s *APIV1Service) semanticIndexingEnabled() bool {
 	if !s.semanticStorageEnabled() {
 		return false
 	}
-	_, err := s.newOpenAIEmbeddingClient(context.Background())
+	_, err := s.getSemanticEmbeddingClient(context.Background())
 	return err == nil
 }
 
@@ -252,7 +252,7 @@ func (s *APIV1Service) scheduleMemoEmbeddingDelete(memoID int32) {
 }
 
 func (s *APIV1Service) refreshMemoEmbedding(ctx context.Context, memoID int32, content string) error {
-	embeddingClient, err := s.newOpenAIEmbeddingClient(ctx)
+	embeddingClient, err := s.getSemanticEmbeddingClient(ctx)
 	if err != nil {
 		return err
 	}
@@ -275,7 +275,7 @@ func (s *APIV1Service) refreshMemoEmbedding(ctx context.Context, memoID int32, c
 
 	return s.Store.UpsertMemoEmbedding(ctx, &store.MemoEmbedding{
 		MemoID:      memoID,
-		Model:       embeddingClient.model,
+		Model:       embeddingClient.Model(),
 		Dimension:   int32(len(embedding)),
 		Embedding:   embedding,
 		ContentHash: contentHash,

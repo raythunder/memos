@@ -22,6 +22,13 @@ const (
 	openAIEmbeddingUserAgent = "memos-semantic-search/1.0"
 )
 
+// SemanticEmbeddingClient abstracts semantic embedding generation.
+// It allows test injection without external API dependency.
+type SemanticEmbeddingClient interface {
+	Embed(ctx context.Context, text string) ([]float64, error)
+	Model() string
+}
+
 type openAIEmbeddingClient struct {
 	baseURL    string
 	apiKey     string
@@ -72,6 +79,13 @@ func (s *APIV1Service) newOpenAIEmbeddingClient(ctx context.Context) (*openAIEmb
 		return nil, err
 	}
 	return newOpenAIEmbeddingClient(config)
+}
+
+func (s *APIV1Service) getSemanticEmbeddingClient(ctx context.Context) (SemanticEmbeddingClient, error) {
+	if s.EmbeddingClientFactory != nil {
+		return s.EmbeddingClientFactory(ctx)
+	}
+	return s.newOpenAIEmbeddingClient(ctx)
 }
 
 func (s *APIV1Service) getOpenAIEmbeddingConfig(ctx context.Context) (*openAIEmbeddingConfig, error) {
@@ -167,4 +181,8 @@ func (c *openAIEmbeddingClient) Embed(ctx context.Context, text string) ([]float
 	}
 
 	return response.Data[0].Embedding, nil
+}
+
+func (c *openAIEmbeddingClient) Model() string {
+	return c.model
 }

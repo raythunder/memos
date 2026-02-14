@@ -2,6 +2,7 @@ package test
 
 import (
 	"context"
+	"os"
 	"testing"
 
 	"github.com/usememos/memos/internal/profile"
@@ -23,6 +24,7 @@ type TestService struct {
 // NewTestService creates a new test service with SQLite database.
 func NewTestService(t *testing.T) *TestService {
 	ctx := context.Background()
+	driver := getDriverFromEnv()
 
 	// Create a test store with SQLite
 	testStore := teststore.NewTestingStore(ctx, t)
@@ -32,8 +34,8 @@ func NewTestService(t *testing.T) *TestService {
 		Demo:        true,
 		Version:     "test-1.0.0",
 		InstanceURL: "http://localhost:8080",
-		Driver:      "sqlite",
-		DSN:         ":memory:",
+		Driver:      driver,
+		DSN:         "",
 	}
 
 	// Create APIV1Service with nil grpcServer since we're testing direct calls
@@ -54,6 +56,14 @@ func NewTestService(t *testing.T) *TestService {
 		Profile: testProfile,
 		Secret:  secret,
 	}
+}
+
+func getDriverFromEnv() string {
+	driver := os.Getenv("DRIVER")
+	if driver == "" {
+		return "sqlite"
+	}
+	return driver
 }
 
 // Cleanup closes resources after test.
