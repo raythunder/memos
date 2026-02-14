@@ -1,6 +1,11 @@
 package v1
 
 import (
+	"context"
+	"encoding/json"
+	"net/http"
+	"net/http/httptest"
+	"sync/atomic"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -70,4 +75,64 @@ func TestNewOpenAIEmbeddingClientRequireAPIKey(t *testing.T) {
 	})
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "openai api key is not configured")
+}
+
+func TestOpenAIEmbeddingClientRetryOnServerError(t *testing.T) {
+	t.Parallel()
+
+	var attemptCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		attempt := atomic.AddInt32(&attemptCount, 1)
+		w.Header().Set("Content-Type", "application/json")
+		if attempt < 3 {
+			w.WriteHeader(http.StatusInternalServerError)
+			_, _ = w.Write([]byte(`{"error":{"message":"temporary upstream error"}}`))
+			return
+		}
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": []map[string]any{
+				{
+					"embedding": []float64{0.1, 0.2, 0.3},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client, err := newOpenAIEmbeddingClient(&openAIEmbeddingConfig{
+		baseURL: server.URL,
+		apiKey:  "sk-test",
+		model:   "test-model",
+	})
+	require.NoError(t, err)
+
+	embedding, err := client.Embed(context.Background(), "hello world")
+	require.NoError(t, err)
+	require.Equal(t, []float64{0.1, 0.2, 0.3}, embedding)
+	require.Equal(t, int32(3), atomic.LoadInt32(&attemptCount))
+}
+
+func TestOpenAIEmbeddingClientNoRetryOnUnauthorized(t *testing.T) {
+	t.Parallel()
+
+	var attemptCount int32
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		atomic.AddInt32(&attemptCount, 1)
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusUnauthorized)
+		_, _ = w.Write([]byte(`{"error":{"message":"invalid api key"}}`))
+	}))
+	defer server.Close()
+
+	client, err := newOpenAIEmbeddingClient(&openAIEmbeddingConfig{
+		baseURL: server.URL,
+		apiKey:  "sk-test",
+		model:   "test-model",
+	})
+	require.NoError(t, err)
+
+	_, err = client.Embed(context.Background(), "hello world")
+	require.Error(t, err)
+	require.Contains(t, err.Error(), "invalid api key")
+	require.Equal(t, int32(1), atomic.LoadInt32(&attemptCount))
 }

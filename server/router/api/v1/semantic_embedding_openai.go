@@ -20,6 +20,9 @@ const (
 	defaultOpenAIBaseURL     = "https://api.openai.com/v1"
 	defaultEmbeddingModel    = "text-embedding-3-small"
 	openAIEmbeddingUserAgent = "memos-semantic-search/1.0"
+	openAIEmbeddingMaxRetry  = 2
+	openAIEmbeddingBackoff   = 100 * time.Millisecond
+	openAIEmbeddingBodyLimit = 2 << 20
 )
 
 // SemanticEmbeddingClient abstracts semantic embedding generation.
@@ -146,9 +149,34 @@ func (c *openAIEmbeddingClient) Embed(ctx context.Context, text string) ([]float
 		return nil, errors.Wrap(err, "failed to marshal openai embedding request")
 	}
 
+	for attempt := 0; ; attempt++ {
+		embedding, retryable, err := c.embedOnce(ctx, body)
+		if err == nil {
+			return embedding, nil
+		}
+		if !retryable || attempt >= openAIEmbeddingMaxRetry {
+			return nil, err
+		}
+
+		backoffDuration := openAIEmbeddingBackoff * time.Duration(1<<attempt)
+		timer := time.NewTimer(backoffDuration)
+		select {
+		case <-ctx.Done():
+			timer.Stop()
+			return nil, errors.Wrap(ctx.Err(), "openai embedding request canceled")
+		case <-timer.C:
+		}
+	}
+}
+
+func (c *openAIEmbeddingClient) Model() string {
+	return c.model
+}
+
+func (c *openAIEmbeddingClient) embedOnce(ctx context.Context, body []byte) ([]float64, bool, error) {
 	httpRequest, err := http.NewRequestWithContext(ctx, http.MethodPost, c.baseURL+"/embeddings", bytes.NewReader(body))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create openai embedding request")
+		return nil, false, errors.Wrap(err, "failed to create openai embedding request")
 	}
 	httpRequest.Header.Set("Content-Type", "application/json")
 	httpRequest.Header.Set("Authorization", "Bearer "+c.apiKey)
@@ -156,13 +184,16 @@ func (c *openAIEmbeddingClient) Embed(ctx context.Context, text string) ([]float
 
 	httpResponse, err := c.httpClient.Do(httpRequest)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to call openai embedding api")
+		if ctx.Err() != nil {
+			return nil, false, errors.Wrap(ctx.Err(), "openai embedding request canceled")
+		}
+		return nil, true, errors.Wrap(err, "failed to call openai embedding api")
 	}
 	defer httpResponse.Body.Close()
 
-	responseBody, err := io.ReadAll(io.LimitReader(httpResponse.Body, 2<<20))
+	responseBody, err := io.ReadAll(io.LimitReader(httpResponse.Body, openAIEmbeddingBodyLimit))
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to read openai embedding response")
+		return nil, true, errors.Wrap(err, "failed to read openai embedding response")
 	}
 
 	response := struct {
@@ -174,22 +205,25 @@ func (c *openAIEmbeddingClient) Embed(ctx context.Context, text string) ([]float
 		} `json:"error"`
 	}{}
 	if err := json.Unmarshal(responseBody, &response); err != nil {
-		return nil, errors.Wrap(err, "failed to decode openai embedding response")
+		return nil, isRetryableOpenAIStatus(httpResponse.StatusCode), errors.Wrap(err, "failed to decode openai embedding response")
 	}
 
 	if httpResponse.StatusCode >= http.StatusBadRequest {
 		if response.Error != nil && response.Error.Message != "" {
-			return nil, errors.Errorf("openai embedding request failed: %s", response.Error.Message)
+			return nil, isRetryableOpenAIStatus(httpResponse.StatusCode), errors.Errorf("openai embedding request failed: %s", response.Error.Message)
 		}
-		return nil, errors.Errorf("openai embedding request failed with status %d", httpResponse.StatusCode)
+		return nil, isRetryableOpenAIStatus(httpResponse.StatusCode), errors.Errorf("openai embedding request failed with status %d", httpResponse.StatusCode)
 	}
 	if len(response.Data) == 0 || len(response.Data[0].Embedding) == 0 {
-		return nil, errors.New("openai embedding response is empty")
+		return nil, false, errors.New("openai embedding response is empty")
 	}
 
-	return response.Data[0].Embedding, nil
+	return response.Data[0].Embedding, false, nil
 }
 
-func (c *openAIEmbeddingClient) Model() string {
-	return c.model
+func isRetryableOpenAIStatus(statusCode int) bool {
+	if statusCode == http.StatusTooManyRequests || statusCode == http.StatusRequestTimeout {
+		return true
+	}
+	return statusCode >= http.StatusInternalServerError
 }

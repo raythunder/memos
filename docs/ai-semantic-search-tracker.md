@@ -441,6 +441,28 @@ Next step:
 - Next step:
   - use default `30x` in weekly runs for stable percentiles.
 
+#### 2026-02-14 (OpenAI embedding retry hardening)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added bounded retry/backoff for OpenAI embedding requests:
+    - retries on transient transport/server conditions (`429`, `408`, `5xx`, request transport error)
+    - no retry on non-retryable client errors (for example `401`)
+  - Split single-call logic into `embedOnce` to keep retry flow simple and testable.
+  - Added unit tests verifying:
+    - server-error retries eventually succeed
+    - unauthorized response fails fast without retry
+- Files:
+  - `server/router/api/v1/semantic_embedding_openai.go`
+  - `server/router/api/v1/semantic_embedding_openai_test.go`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/...`
+- Risks/blockers:
+  - backoff constants are currently static; may require tuning under production rate-limit patterns.
+- Next step:
+  - monitor retry-related latency and failure logs in staging, then decide whether to expose retry knobs as runtime config.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.
