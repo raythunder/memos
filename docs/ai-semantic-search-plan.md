@@ -170,6 +170,7 @@ Current baseline (2026-02-14):
 
 - `DRIVER=postgres` local benchmark reports `p95=152.4ms` at 10k corpus.
 - Detailed command/result: `docs/ai-semantic-search-benchmark.md`.
+- Operations runbook: `docs/ai-semantic-search-operations.md`.
 
 ## 5. Engineering Principles Mapping
 

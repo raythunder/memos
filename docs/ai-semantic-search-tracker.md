@@ -10,7 +10,7 @@ Last updated: 2026-02-14
 | M1 Storage + embedding pipeline | DONE | 2026-02-19 | @raythunder | postgres migration + async embedding jobs + tests |
 | M2 Semantic search API | DONE | 2026-02-22 | @raythunder | retrieval + ACL filtering + integration tests |
 | M3 Frontend integration | DONE | 2026-02-24 | @raythunder | semantic mode/hook/error states + admin AI settings |
-| M4 Performance hardening | IN_PROGRESS | 2026-02-26 | @raythunder | 10k benchmark baseline done (p95 152.4ms), tuning gate defined |
+| M4 Performance hardening | IN_PROGRESS | 2026-02-26 | @raythunder | 10k baseline + benchmark script + ops runbook done; staging trend run pending |
 
 Status enum:
 
@@ -25,6 +25,7 @@ Status enum:
 - Sprint scope:
   - add reproducible 10k benchmark harness
   - capture p95 baseline and optimization gate
+  - add semantic search operations runbook (config/rotation/triage)
   - keep README/plan/tracker docs synchronized
 
 ## 3. Task Checklist
@@ -63,6 +64,8 @@ Status enum:
 - [x] Add 10k semantic search benchmark (`BenchmarkSearchMemosSemanticPostgres10k`)
 - [x] Record baseline metrics (`p50/p95/p99`) in local benchmark doc
 - [x] Document optimization gate for future `pgvector` adoption
+- [x] Add operations runbook (config priority, key rotation, failure triage)
+- [ ] Run staging trend benchmark with production-like content distribution
 
 ## 4. Decision Log
 
@@ -74,6 +77,7 @@ Status enum:
 | 2026-02-14 | AI config managed from frontend and encrypted at rest | Improve operability and secret safety | Adds `instance/settings/AI` contract and crypto helpers |
 | 2026-02-14 | Add injectable embedding client factory in API service | Improve testability without real OpenAI dependency | Enables deterministic semantic integration tests |
 | 2026-02-14 | Keep app-layer ranking for now; postpone pgvector | Current 10k baseline p95 is within target with margin | Avoids premature complexity; keep clear trigger for optimization |
+| 2026-02-14 | Add dedicated ops runbook + benchmark helper script | Reduce repeated manual steps and close secret-rotation doc gap | Makes M4 checks easier to run and audit |
 
 ## 5. Iteration Log
 
@@ -266,6 +270,28 @@ Next step:
   - benchmark currently uses synthetic vectors; online OpenAI vector distribution may vary slightly.
 - Next step:
   - run the same benchmark in staging with production-like content distribution and track trend over time.
+
+#### 2026-02-14 (Operations runbook + benchmark script)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added a dedicated semantic-search operations runbook for config precedence, key rotation, triage flow, and weekly checks.
+  - Added `scripts/benchmark-semantic-search.sh` to run and summarize semantic benchmark metrics (`ns/op`, `p50/p95/p99`).
+  - Synced benchmark doc and README links with the new runbook/script workflow.
+- Files:
+  - `scripts/benchmark-semantic-search.sh`
+  - `docs/ai-semantic-search-operations.md`
+  - `docs/ai-semantic-search-plan.md`
+  - `docs/ai-semantic-search-benchmark.md`
+  - `docs/ai-semantic-search-tracker.md`
+  - `README.md`
+- Verification:
+  - `sh -n scripts/benchmark-semantic-search.sh`
+  - `rg -n "operations|benchmark-semantic-search.sh" docs README.md`
+- Risks/blockers:
+  - staging trend benchmark data is still pending and requires production-like corpus.
+- Next step:
+  - run weekly staging benchmark and append trend snapshots to this tracker.
 
 ## 6. Local Manual Test Account
 

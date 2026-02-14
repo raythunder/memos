@@ -27,11 +27,13 @@ Target from plan:
 ## 3. Command
 
 ```bash
-DRIVER=postgres go test ./server/router/api/v1/test \
-  -run '^$' \
-  -bench '^BenchmarkSearchMemosSemanticPostgres10k$' \
-  -benchtime=30x \
-  -count=1
+DRIVER=postgres scripts/benchmark-semantic-search.sh
+```
+
+Raw command (equivalent):
+
+```bash
+DRIVER=postgres go test ./server/router/api/v1/test -run '^$' -bench '^BenchmarkSearchMemosSemanticPostgres10k$' -benchtime=30x -count=1
 ```
 
 ## 4. Result
@@ -58,6 +60,6 @@ Conclusion:
 ## 6. Local Runbook
 
 1. Ensure Docker is running (for postgres test container).
-2. Execute the benchmark command in repo root.
+2. Execute `DRIVER=postgres scripts/benchmark-semantic-search.sh` in repo root.
 3. Record outputs (`ns/op`, `p50_ms`, `p95_ms`, `p99_ms`) to tracker.
 4. If `p95_ms >= 500`, open performance task to evaluate `pgvector` index path.

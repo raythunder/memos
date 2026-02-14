@@ -54,6 +54,7 @@ Memos is a privacy-first, self-hosted knowledge base for personal notes, team wi
 - AI Semantic Search Plan: `docs/ai-semantic-search-plan.md`
 - AI Semantic Search Tracker: `docs/ai-semantic-search-tracker.md`
 - AI Semantic Search Benchmark: `docs/ai-semantic-search-benchmark.md`
+- AI Semantic Search Operations: `docs/ai-semantic-search-operations.md`
 
 ## Quick Start
 
