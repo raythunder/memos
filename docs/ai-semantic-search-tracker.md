@@ -315,6 +315,27 @@ Next step:
 - Next step:
   - add regression checks for semantic error mapping behavior in frontend integration tests when test harness is available.
 
+#### 2026-02-14 (OpenAI base URL normalization)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added base-URL normalization for OpenAI embedding client:
+    - trim spaces
+    - add `https://` automatically when scheme is omitted
+    - strip trailing slash
+  - Added unit tests for normalization and client initialization behavior.
+  - Goal: prevent misconfiguration failures when admin inputs host/path without protocol.
+- Files:
+  - `server/router/api/v1/semantic_embedding_openai.go`
+  - `server/router/api/v1/semantic_embedding_openai_test.go`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/...`
+- Risks/blockers:
+  - normalization defaults to `https://` for scheme-less values; non-HTTPS private endpoints must still set explicit `http://`.
+- Next step:
+  - run semantic query smoke test with configured provider endpoint after postgres runtime is available.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.

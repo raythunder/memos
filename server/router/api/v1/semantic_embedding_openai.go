@@ -52,11 +52,7 @@ func newOpenAIEmbeddingClient(config *openAIEmbeddingConfig) (*openAIEmbeddingCl
 		return nil, errors.New("openai api key is not configured")
 	}
 
-	baseURL := strings.TrimSpace(config.baseURL)
-	if baseURL == "" {
-		baseURL = defaultOpenAIBaseURL
-	}
-	baseURL = strings.TrimRight(baseURL, "/")
+	baseURL := normalizeOpenAIBaseURL(config.baseURL)
 
 	model := strings.TrimSpace(config.model)
 	if model == "" {
@@ -71,6 +67,17 @@ func newOpenAIEmbeddingClient(config *openAIEmbeddingConfig) (*openAIEmbeddingCl
 			Timeout: 30 * time.Second,
 		},
 	}, nil
+}
+
+func normalizeOpenAIBaseURL(rawBaseURL string) string {
+	baseURL := strings.TrimSpace(rawBaseURL)
+	if baseURL == "" {
+		baseURL = defaultOpenAIBaseURL
+	}
+	if !strings.Contains(baseURL, "://") {
+		baseURL = "https://" + baseURL
+	}
+	return strings.TrimRight(baseURL, "/")
 }
 
 func (s *APIV1Service) newOpenAIEmbeddingClient(ctx context.Context) (*openAIEmbeddingClient, error) {
