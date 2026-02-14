@@ -231,6 +231,15 @@ func (s *APIV1Service) scheduleMemoEmbeddingSync(memoID int32, content string) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), 45*time.Second)
 		defer cancel()
+
+		if s.embeddingSemaphore != nil {
+			if err := s.embeddingSemaphore.Acquire(ctx, 1); err != nil {
+				slog.Warn("failed to acquire embedding semaphore", "memoID", memoID, "error", err)
+				return
+			}
+			defer s.embeddingSemaphore.Release(1)
+		}
+
 		if err := s.refreshMemoEmbedding(ctx, memoID, content); err != nil {
 			slog.Warn("failed to refresh memo embedding", "memoID", memoID, "error", err)
 		}

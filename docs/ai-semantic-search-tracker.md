@@ -378,6 +378,24 @@ Next step:
 - Next step:
   - keep weekly staging benchmark trend updates and gate checks (`p95 < 500ms`).
 
+#### 2026-02-14 (Embedding sync concurrency guard)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added concurrency limiting for async embedding refresh jobs using semaphore.
+  - New service field `embeddingSemaphore` defaults to max 8 concurrent refreshes.
+  - Goal: reduce risk of unbounded goroutine growth during memo write bursts.
+- Files:
+  - `server/router/api/v1/v1.go`
+  - `server/router/api/v1/memo_semantic_service.go`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/...`
+- Risks/blockers:
+  - under extreme sustained write throughput, some refresh tasks may timeout before acquiring semaphore.
+- Next step:
+  - monitor embedding refresh warning logs and tune concurrency/timeout with benchmark evidence.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.
