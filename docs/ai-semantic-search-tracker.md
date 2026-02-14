@@ -613,3 +613,9 @@ Smoke test evidence (2026-02-14):
 - Screenshot: `.tmp/dev-run/agent-browser-home.png`
 - Admin AI settings save/clear succeeded on `http://127.0.0.1:5173/setting#ai`.
 - Screenshot: `.tmp/dev-run/ai-settings-page.png`
+- Admin AI tuning fields save/readback succeeded:
+  - `openai_embedding_max_retry=4`
+  - `openai_embedding_retry_backoff_ms=220`
+  - `semantic_embedding_concurrency=12`
+- Screenshot: `.tmp/dev-run/ai-settings-tuning-fields.png`
+- Uploaded screenshot link: `https://pcdn.shchtv.com/pres/resources/0705b9fc3c0be55997164eda394c18ff_hWspnULm_260214223831.png`
