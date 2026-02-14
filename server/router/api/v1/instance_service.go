@@ -354,10 +354,17 @@ func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1p
 		}
 	}
 
-	return s.Store.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
+	instanceSetting, err := s.Store.UpsertInstanceSetting(ctx, &storepb.InstanceSetting{
 		Key:   storepb.InstanceSettingKey_AI,
 		Value: &storepb.InstanceSetting_AiSetting{AiSetting: updatedSetting},
 	})
+	if err != nil {
+		return nil, err
+	}
+
+	// Apply updated embedding concurrency immediately for subsequent async sync jobs.
+	s.setEmbeddingSemaphoreLimit(resolveEmbeddingRefreshConcurrencyWithSetting(updatedSetting.SemanticEmbeddingConcurrency))
+	return instanceSetting, nil
 }
 
 func sanitizeNonNegativeInt32(value int32) int32 {

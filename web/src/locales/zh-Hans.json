@@ -330,7 +330,7 @@
       "retry-backoff-ms": "重试退避时间（毫秒）",
       "retry-backoff-ms-description": "填写 0 表示使用后端默认值或环境变量兜底。",
       "embedding-concurrency": "Embedding 刷新并发数",
-      "embedding-concurrency-description": "填写 0 表示使用后端默认值或环境变量兜底。可能需要重启后完全生效。",
+      "embedding-concurrency-description": "填写 0 表示使用后端默认值或环境变量兜底。保存后对新的异步索引任务生效。",
       "api-key": "OpenAI API Key",
       "api-key-stored": "已在服务端加密保存",
       "api-key-missing": "尚未配置",

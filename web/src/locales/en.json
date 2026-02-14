@@ -329,7 +329,7 @@
       "retry-backoff-ms": "Retry backoff (ms)",
       "retry-backoff-ms-description": "0 means fallback to backend default/environment value.",
       "embedding-concurrency": "Embedding refresh concurrency",
-      "embedding-concurrency-description": "0 means fallback to backend default/environment value. Restart may be required to fully apply.",
+      "embedding-concurrency-description": "0 means fallback to backend default/environment value. Applies to new async indexing jobs after save.",
       "api-key": "OpenAI API key",
       "api-key-stored": "Stored on server (encrypted)",
       "api-key-missing": "Not configured yet",

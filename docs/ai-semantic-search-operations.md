@@ -109,6 +109,7 @@ Optional knobs:
 - `BENCHTIME` (default: `30x`)
 - `COUNT` (default: `1`)
 - `MEMOS_SEMANTIC_EMBEDDING_CONCURRENCY` (default: `8`) controls concurrent async embedding refresh workers.
+  - When updated from `Settings -> AI`, the new limit applies to newly scheduled async jobs.
 
 Example:
 

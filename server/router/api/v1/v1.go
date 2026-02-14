@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"sync"
 
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -48,6 +49,7 @@ type APIV1Service struct {
 	thumbnailSemaphore *semaphore.Weighted
 	// embeddingSemaphore limits concurrent embedding refresh jobs to avoid unbounded goroutines.
 	embeddingSemaphore *semaphore.Weighted
+	embeddingMu        sync.RWMutex
 }
 
 func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store) *APIV1Service {
@@ -55,14 +57,15 @@ func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store
 		markdown.WithTagExtension(),
 	)
 	embeddingConcurrency := resolveEmbeddingRefreshConcurrency(context.Background(), store)
-	return &APIV1Service{
+	service := &APIV1Service{
 		Secret:             secret,
 		Profile:            profile,
 		Store:              store,
 		MarkdownService:    markdownService,
-		thumbnailSemaphore: semaphore.NewWeighted(3),                    // Limit to 3 concurrent thumbnail generations
-		embeddingSemaphore: semaphore.NewWeighted(embeddingConcurrency), // Limit embedding refresh concurrency
+		thumbnailSemaphore: semaphore.NewWeighted(3), // Limit to 3 concurrent thumbnail generations
 	}
+	service.setEmbeddingSemaphoreLimit(embeddingConcurrency)
+	return service
 }
 
 func resolveEmbeddingRefreshConcurrency(ctx context.Context, stores *store.Store) int64 {
@@ -70,11 +73,25 @@ func resolveEmbeddingRefreshConcurrency(ctx context.Context, stores *store.Store
 		aiSetting, err := stores.GetInstanceAISetting(ctx)
 		if err != nil {
 			slog.Warn("failed to load AI setting for embedding concurrency, fallback to env/default", "error", err)
-		} else if aiSetting != nil && aiSetting.GetSemanticEmbeddingConcurrency() > 0 {
-			return int64(aiSetting.GetSemanticEmbeddingConcurrency())
+		} else if aiSetting != nil {
+			return resolveEmbeddingRefreshConcurrencyWithSetting(aiSetting.GetSemanticEmbeddingConcurrency())
 		}
 	}
 	return parseEmbeddingRefreshConcurrencyFromEnv(strings.TrimSpace(os.Getenv(semanticEmbeddingConcurrencyEnv)))
+}
+
+func resolveEmbeddingRefreshConcurrencyWithSetting(settingValue int32) int64 {
+	if parsed := parseEmbeddingRefreshConcurrencyFromSetting(settingValue); parsed > 0 {
+		return parsed
+	}
+	return parseEmbeddingRefreshConcurrencyFromEnv(strings.TrimSpace(os.Getenv(semanticEmbeddingConcurrencyEnv)))
+}
+
+func parseEmbeddingRefreshConcurrencyFromSetting(value int32) int64 {
+	if value <= 0 {
+		return 0
+	}
+	return int64(value)
 }
 
 func parseEmbeddingRefreshConcurrencyFromEnv(raw string) int64 {
@@ -88,6 +105,21 @@ func parseEmbeddingRefreshConcurrencyFromEnv(raw string) int64 {
 		return defaultEmbeddingRefreshConcurrency
 	}
 	return value
+}
+
+func (s *APIV1Service) getEmbeddingSemaphore() *semaphore.Weighted {
+	s.embeddingMu.RLock()
+	defer s.embeddingMu.RUnlock()
+	return s.embeddingSemaphore
+}
+
+func (s *APIV1Service) setEmbeddingSemaphoreLimit(limit int64) {
+	if limit <= 0 {
+		limit = defaultEmbeddingRefreshConcurrency
+	}
+	s.embeddingMu.Lock()
+	s.embeddingSemaphore = semaphore.NewWeighted(limit)
+	s.embeddingMu.Unlock()
 }
 
 // RegisterGateway registers the gRPC-Gateway and Connect handlers with the given Echo instance.

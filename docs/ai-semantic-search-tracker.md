@@ -540,7 +540,7 @@ Next step:
   - `go test ./server/router/api/v1/...`
   - `cd web && pnpm lint`
 - Risks/blockers:
-  - `semantic_embedding_concurrency` is applied at service initialization; changing this value may require restart to fully apply.
+  - `semantic_embedding_concurrency` applies to new async indexing jobs after save; in-flight jobs continue with previous semaphore instance.
 - Next step:
   - perform one UI save/readback smoke test on `Settings -> AI` for the three new fields.
 
@@ -561,6 +561,26 @@ Next step:
   - none.
 - Next step:
   - run UI save/readback smoke and capture screenshot evidence.
+
+#### 2026-02-14 (Live apply embedding concurrency after AI save)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added runtime semaphore replacement when AI setting is updated.
+  - `semantic_embedding_concurrency` now applies immediately to newly scheduled async embedding jobs (without restart).
+  - Added synchronization helpers around embedding semaphore access/update to avoid concurrent data races.
+- Files:
+  - `server/router/api/v1/v1.go`
+  - `server/router/api/v1/memo_semantic_service.go`
+  - `server/router/api/v1/instance_service.go`
+  - `server/router/api/v1/v1_semantic_config_test.go`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/...`
+- Risks/blockers:
+  - in-flight jobs keep previous semaphore instance; only newly scheduled jobs use updated limit.
+- Next step:
+  - collect staging write-burst logs to verify expected queueing behavior under concurrency updates.
 
 ## 6. Local Manual Test Account
 

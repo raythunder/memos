@@ -3,6 +3,7 @@ package v1
 import (
 	"context"
 	"testing"
+	"time"
 
 	storepb "github.com/usememos/memos/proto/gen/store"
 	"github.com/usememos/memos/store"
@@ -83,4 +84,46 @@ func TestResolveEmbeddingRefreshConcurrencyFallbackToEnvWhenStoreMissing(t *test
 	if actual != 11 {
 		t.Fatalf("resolveEmbeddingRefreshConcurrency()=%d, expected=11", actual)
 	}
+}
+
+func TestResolveEmbeddingRefreshConcurrencyWithSettingFallback(t *testing.T) {
+	t.Setenv(semanticEmbeddingConcurrencyEnv, "9")
+	actual := resolveEmbeddingRefreshConcurrencyWithSetting(0)
+	if actual != 9 {
+		t.Fatalf("resolveEmbeddingRefreshConcurrencyWithSetting()=%d, expected=9", actual)
+	}
+}
+
+func TestSetEmbeddingSemaphoreLimit(t *testing.T) {
+	service := &APIV1Service{}
+	service.setEmbeddingSemaphoreLimit(1)
+	semaphoreOne := service.getEmbeddingSemaphore()
+	if semaphoreOne == nil {
+		t.Fatalf("embedding semaphore should not be nil")
+	}
+
+	ctx := context.Background()
+	if err := semaphoreOne.Acquire(ctx, 1); err != nil {
+		t.Fatalf("failed to acquire first semaphore: %v", err)
+	}
+
+	timeoutCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
+	defer cancel()
+	if err := semaphoreOne.Acquire(timeoutCtx, 1); err == nil {
+		t.Fatalf("expected second acquire to fail due limit")
+	}
+	semaphoreOne.Release(1)
+
+	service.setEmbeddingSemaphoreLimit(2)
+	semaphoreTwo := service.getEmbeddingSemaphore()
+	if semaphoreTwo == nil {
+		t.Fatalf("updated embedding semaphore should not be nil")
+	}
+	if semaphoreTwo == semaphoreOne {
+		t.Fatalf("expected semaphore to be replaced on limit update")
+	}
+	if err := semaphoreTwo.Acquire(ctx, 2); err != nil {
+		t.Fatalf("failed to acquire updated semaphore with limit=2: %v", err)
+	}
+	semaphoreTwo.Release(2)
 }
