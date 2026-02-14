@@ -293,6 +293,28 @@ Next step:
 - Next step:
   - run weekly staging benchmark and append trend snapshots to this tracker.
 
+#### 2026-02-14 (Semantic error UX hardening)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added semantic-search-specific error mapping in `PagedMemoList` for clearer user-facing failure hints.
+  - Covered common precondition/provider failures:
+    - postgres-only driver requirement
+    - missing semantic/OpenAI configuration
+    - embedding provider request failures
+  - Added localized copy for the new semantic error messages (`en`, `zh-Hans`).
+- Files:
+  - `web/src/components/PagedMemoList/PagedMemoList.tsx`
+  - `web/src/locales/en.json`
+  - `web/src/locales/zh-Hans.json`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `cd web && pnpm lint`
+- Risks/blockers:
+  - other locales currently rely on fallback translation keys for the new messages.
+- Next step:
+  - add regression checks for semantic error mapping behavior in frontend integration tests when test harness is available.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.

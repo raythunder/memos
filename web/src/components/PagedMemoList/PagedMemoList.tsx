@@ -9,6 +9,7 @@ import { useView } from "@/contexts/ViewContext";
 import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
 import { useInfiniteMemos, useInfiniteSemanticMemos } from "@/hooks/useMemoQueries";
 import { userKeys } from "@/hooks/useUserQueries";
+import { getErrorMessage } from "@/lib/error";
 import { Routes } from "@/router";
 import { State } from "@/types/proto/api/v1/common_pb";
 import type { Memo } from "@/types/proto/api/v1/memo_service_pb";
@@ -30,6 +31,23 @@ interface Props {
   showCreator?: boolean;
   enabled?: boolean;
 }
+
+const resolveSemanticSearchErrorMessage = (message: string, t: ReturnType<typeof useTranslate>): string => {
+  const normalized = message.toLowerCase();
+  if (normalized.includes("semantic search only supports postgres driver")) {
+    return t("memo.semantic-search-error-postgres-only");
+  }
+  if (normalized.includes("semantic search is not configured")) {
+    return t("memo.semantic-search-error-not-configured");
+  }
+  if (normalized.includes("failed to generate query embedding")) {
+    return t("memo.semantic-search-error-provider");
+  }
+  if (normalized.includes("failed precondition")) {
+    return t("memo.semantic-search-error-precondition");
+  }
+  return message;
+};
 
 function useAutoFetchWhenNotScrollable({
   hasNextPage,
@@ -118,6 +136,14 @@ const PagedMemoList = (props: Props) => {
   const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, error } = semanticSearchEnabled
     ? semanticQueryResult
     : keywordQueryResult;
+  const queryErrorMessage = useMemo(() => {
+    const fallbackMessage = t("message.failed-to-load-data");
+    const message = getErrorMessage(error, fallbackMessage);
+    if (!semanticSearchEnabled) {
+      return message;
+    }
+    return resolveSemanticSearchErrorMessage(message, t);
+  }, [error, semanticSearchEnabled, t]);
 
   // Flatten pages into a single array of memos
   const memos = useMemo(() => data?.pages.flatMap((page) => page.memos) || [], [data]);
@@ -181,7 +207,7 @@ const PagedMemoList = (props: Props) => {
       ) : isError ? (
         <div className="w-full mt-12 mb-8 flex flex-col justify-center items-center italic">
           <Empty />
-          <p className="mt-2 text-muted-foreground">{error instanceof Error ? error.message : t("message.failed-to-load-data")}</p>
+          <p className="mt-2 text-muted-foreground">{queryErrorMessage}</p>
         </div>
       ) : (
         <>
