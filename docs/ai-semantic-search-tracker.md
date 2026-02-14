@@ -463,6 +463,27 @@ Next step:
 - Next step:
   - monitor retry-related latency and failure logs in staging, then decide whether to expose retry knobs as runtime config.
 
+#### 2026-02-14 (Configurable embedding refresh concurrency)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added runtime env knob `MEMOS_SEMANTIC_EMBEDDING_CONCURRENCY` for async embedding refresh concurrency.
+  - Added safe fallback behavior:
+    - empty/invalid/non-positive values fall back to default `8`
+    - warn log emitted on invalid input
+  - Added unit tests for env parsing/fallback logic.
+- Files:
+  - `server/router/api/v1/v1.go`
+  - `server/router/api/v1/v1_semantic_config_test.go`
+  - `docs/ai-semantic-search-operations.md`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/...`
+- Risks/blockers:
+  - over-tuning concurrency without DB/API capacity planning may increase upstream pressure.
+- Next step:
+  - collect staging metrics under a few concurrency values and pick an ops default per environment class.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.

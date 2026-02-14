@@ -97,6 +97,7 @@ Optional knobs:
 
 - `BENCHTIME` (default: `30x`)
 - `COUNT` (default: `1`)
+- `MEMOS_SEMANTIC_EMBEDDING_CONCURRENCY` (default: `8`) controls concurrent async embedding refresh workers.
 
 Example:
 

@@ -2,7 +2,11 @@ package v1
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
+	"strings"
 
 	"connectrpc.com/connect"
 	"github.com/grpc-ecosystem/grpc-gateway/v2/runtime"
@@ -15,6 +19,11 @@ import (
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 	"github.com/usememos/memos/server/auth"
 	"github.com/usememos/memos/store"
+)
+
+const (
+	semanticEmbeddingConcurrencyEnv     = "MEMOS_SEMANTIC_EMBEDDING_CONCURRENCY"
+	defaultEmbeddingRefreshConcurrency  = int64(8)
 )
 
 type APIV1Service struct {
@@ -45,14 +54,29 @@ func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store
 	markdownService := markdown.NewService(
 		markdown.WithTagExtension(),
 	)
+	embeddingConcurrency := resolveEmbeddingRefreshConcurrency()
 	return &APIV1Service{
 		Secret:             secret,
 		Profile:            profile,
 		Store:              store,
 		MarkdownService:    markdownService,
 		thumbnailSemaphore: semaphore.NewWeighted(3), // Limit to 3 concurrent thumbnail generations
-		embeddingSemaphore: semaphore.NewWeighted(8), // Limit embedding refresh concurrency
+		embeddingSemaphore: semaphore.NewWeighted(embeddingConcurrency), // Limit embedding refresh concurrency
 	}
+}
+
+func resolveEmbeddingRefreshConcurrency() int64 {
+	raw := strings.TrimSpace(os.Getenv(semanticEmbeddingConcurrencyEnv))
+	if raw == "" {
+		return defaultEmbeddingRefreshConcurrency
+	}
+
+	value, err := strconv.ParseInt(raw, 10, 64)
+	if err != nil || value <= 0 {
+		slog.Warn("invalid semantic embedding concurrency, fallback to default", "env", semanticEmbeddingConcurrencyEnv, "value", raw)
+		return defaultEmbeddingRefreshConcurrency
+	}
+	return value
 }
 
 // RegisterGateway registers the gRPC-Gateway and Connect handlers with the given Echo instance.
