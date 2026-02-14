@@ -21,13 +21,13 @@ type TestService struct {
 	Secret  string
 }
 
-// NewTestService creates a new test service with SQLite database.
-func NewTestService(t *testing.T) *TestService {
+// NewTestService creates a new test service with the database selected by DRIVER env.
+func NewTestService(tb testing.TB) *TestService {
 	ctx := context.Background()
 	driver := getDriverFromEnv()
 
 	// Create a test store with SQLite
-	testStore := teststore.NewTestingStore(ctx, t)
+	testStore := teststore.NewTestingStore(ctx, tb)
 
 	// Create a test profile
 	testProfile := &profile.Profile{

@@ -63,7 +63,7 @@ func getTestNetwork(ctx context.Context) (*testcontainers.DockerNetwork, error) 
 }
 
 // GetMySQLDSN starts a MySQL container (if not already running) and creates a fresh database for this test.
-func GetMySQLDSN(t *testing.T) string {
+func GetMySQLDSN(t testing.TB) string {
 	ctx := context.Background()
 
 	mysqlOnce.Do(func() {
@@ -163,7 +163,7 @@ func waitForDB(driver, dsn string, timeout time.Duration) error {
 }
 
 // GetPostgresDSN starts a PostgreSQL container (if not already running) and creates a fresh database for this test.
-func GetPostgresDSN(t *testing.T) string {
+func GetPostgresDSN(t testing.TB) string {
 	ctx := context.Background()
 
 	postgresOnce.Do(func() {

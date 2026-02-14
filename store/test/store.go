@@ -22,34 +22,34 @@ import (
 // Each test gets its own isolated database:
 //   - SQLite: new temp file per test
 //   - MySQL/PostgreSQL: new database per test in shared container
-func NewTestingStore(ctx context.Context, t *testing.T) *store.Store {
+func NewTestingStore(ctx context.Context, tb testing.TB) *store.Store {
 	driver := getDriverFromEnv()
-	profile := getTestingProfileForDriver(t, driver)
+	profile := getTestingProfileForDriver(tb, driver)
 	dbDriver, err := db.NewDBDriver(profile)
 	if err != nil {
-		t.Fatalf("failed to create db driver: %v", err)
+		tb.Fatalf("failed to create db driver: %v", err)
 	}
 
 	store := store.New(dbDriver, profile)
 	if err := store.Migrate(ctx); err != nil {
-		t.Fatalf("failed to migrate db: %v", err)
+		tb.Fatalf("failed to migrate db: %v", err)
 	}
 	return store
 }
 
 // NewTestingStoreWithDSN creates a testing store connected to a specific DSN.
 // This is useful for testing migrations on existing data.
-func NewTestingStoreWithDSN(_ context.Context, t *testing.T, driver, dsn string) *store.Store {
+func NewTestingStoreWithDSN(_ context.Context, tb testing.TB, driver, dsn string) *store.Store {
 	profile := &profile.Profile{
 		Port:    getUnusedPort(),
-		Data:    t.TempDir(), // Dummy dir, DSN matters
+		Data:    tb.TempDir(), // Dummy dir, DSN matters
 		DSN:     dsn,
 		Driver:  driver,
 		Version: version.GetCurrentVersion(),
 	}
 	dbDriver, err := db.NewDBDriver(profile)
 	if err != nil {
-		t.Fatalf("failed to create db driver: %v", err)
+		tb.Fatalf("failed to create db driver: %v", err)
 	}
 
 	store := store.New(dbDriver, profile)
@@ -72,12 +72,12 @@ func getUnusedPort() int {
 }
 
 // getTestingProfileForDriver creates a testing profile for a specific driver.
-func getTestingProfileForDriver(t *testing.T, driver string) *profile.Profile {
+func getTestingProfileForDriver(tb testing.TB, driver string) *profile.Profile {
 	// Attempt to load .env file if present (optional, for local development)
 	_ = godotenv.Load(".env")
 
 	// Get a temporary directory for the test data.
-	dir := t.TempDir()
+	dir := tb.TempDir()
 	mode := "prod"
 	port := getUnusedPort()
 
@@ -86,11 +86,11 @@ func getTestingProfileForDriver(t *testing.T, driver string) *profile.Profile {
 	case "sqlite":
 		dsn = fmt.Sprintf("%s/memos_%s.db", dir, mode)
 	case "mysql":
-		dsn = GetMySQLDSN(t)
+		dsn = GetMySQLDSN(tb)
 	case "postgres":
-		dsn = GetPostgresDSN(t)
+		dsn = GetPostgresDSN(tb)
 	default:
-		t.Fatalf("unsupported driver: %s", driver)
+		tb.Fatalf("unsupported driver: %s", driver)
 	}
 
 	return &profile.Profile{

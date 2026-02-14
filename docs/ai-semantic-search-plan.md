@@ -166,6 +166,11 @@ Acceptance:
 
 - p95 target reached or optimization decision documented
 
+Current baseline (2026-02-14):
+
+- `DRIVER=postgres` local benchmark reports `p95=152.4ms` at 10k corpus.
+- Detailed command/result: `docs/ai-semantic-search-benchmark.md`.
+
 ## 5. Engineering Principles Mapping
 
 - KISS: introduce one dedicated semantic endpoint and one embedding table.

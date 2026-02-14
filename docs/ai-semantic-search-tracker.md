@@ -7,10 +7,10 @@ Last updated: 2026-02-14
 | Milestone | Status | Target Date | Owner | Notes |
 | --- | --- | --- | --- | --- |
 | M0 Contracts and skeleton | DONE | 2026-02-16 | @raythunder | proto + service skeleton |
-| M1 Storage + embedding pipeline | IN_PROGRESS | 2026-02-19 | @raythunder | postgres migration + async jobs |
-| M2 Semantic search API | IN_PROGRESS | 2026-02-22 | @raythunder | retrieval + ACL filtering |
-| M3 Frontend integration | IN_PROGRESS | 2026-02-24 | @raythunder | search mode/hook done; postgres e2e pending |
-| M4 Performance hardening | TODO | 2026-02-26 | @raythunder | 10k benchmark + tuning |
+| M1 Storage + embedding pipeline | DONE | 2026-02-19 | @raythunder | postgres migration + async embedding jobs + tests |
+| M2 Semantic search API | DONE | 2026-02-22 | @raythunder | retrieval + ACL filtering + integration tests |
+| M3 Frontend integration | DONE | 2026-02-24 | @raythunder | semantic mode/hook/error states + admin AI settings |
+| M4 Performance hardening | IN_PROGRESS | 2026-02-26 | @raythunder | 10k benchmark baseline done (p95 152.4ms), tuning gate defined |
 
 Status enum:
 
@@ -21,11 +21,11 @@ Status enum:
 
 ## 2. Current Sprint Focus
 
-- Sprint goal: Establish backend contract and storage foundation for semantic search.
+- Sprint goal: Complete performance baseline and operational documentation for semantic search.
 - Sprint scope:
-  - define proto
-  - add postgres migration
-  - add embedding task flow
+  - add reproducible 10k benchmark harness
+  - capture p95 baseline and optimization gate
+  - keep README/plan/tracker docs synchronized
 
 ## 3. Task Checklist
 
@@ -58,6 +58,12 @@ Status enum:
 - [x] Store tests for embedding CRUD
 - [x] Integration smoke tests for semantic endpoint
 
+### Performance
+
+- [x] Add 10k semantic search benchmark (`BenchmarkSearchMemosSemanticPostgres10k`)
+- [x] Record baseline metrics (`p50/p95/p99`) in local benchmark doc
+- [x] Document optimization gate for future `pgvector` adoption
+
 ## 4. Decision Log
 
 | Date | Decision | Rationale | Impact |
@@ -67,6 +73,7 @@ Status enum:
 | 2026-02-14 | Keep keyword and semantic APIs separate | Reduce coupling and regression risk | Adds one new endpoint |
 | 2026-02-14 | AI config managed from frontend and encrypted at rest | Improve operability and secret safety | Adds `instance/settings/AI` contract and crypto helpers |
 | 2026-02-14 | Add injectable embedding client factory in API service | Improve testability without real OpenAI dependency | Enables deterministic semantic integration tests |
+| 2026-02-14 | Keep app-layer ranking for now; postpone pgvector | Current 10k baseline p95 is within target with margin | Avoids premature complexity; keep clear trigger for optimization |
 
 ## 5. Iteration Log
 
@@ -234,6 +241,31 @@ Next step:
   - still need production-like relevance evaluation with real OpenAI vectors on 10k dataset.
 - Next step:
   - run benchmark and profiling on 10k memos (M4) and decide whether to switch to pgvector index.
+
+#### 2026-02-14 (Performance baseline + benchmark harness)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Refactored test helpers to use `testing.TB` so benchmark and tests share one initialization path.
+  - Added `BenchmarkSearchMemosSemanticPostgres10k` with deterministic synthetic vectors.
+  - Added benchmark percentile metrics output (`p50_ms`, `p95_ms`, `p99_ms`).
+  - Added local benchmark runbook and result doc.
+- Files:
+  - `store/test/store.go`
+  - `store/test/containers.go`
+  - `server/router/api/v1/test/test_helper.go`
+  - `server/router/api/v1/test/memo_semantic_benchmark_test.go`
+  - `docs/ai-semantic-search-benchmark.md`
+  - `README.md`
+- Verification:
+  - `go test ./server/router/api/v1/... -count=1`
+  - `go test ./store/test/... -run TestMemoEmbeddingStore -count=1`
+  - `DRIVER=postgres go test ./server/router/api/v1/test -run TestSearchMemosSemanticPostgres -count=1`
+  - `DRIVER=postgres go test ./server/router/api/v1/test -run '^$' -bench '^BenchmarkSearchMemosSemanticPostgres10k$' -benchtime=30x -count=1`
+- Risks/blockers:
+  - benchmark currently uses synthetic vectors; online OpenAI vector distribution may vary slightly.
+- Next step:
+  - run the same benchmark in staging with production-like content distribution and track trend over time.
 
 ## 6. Local Manual Test Account
 
