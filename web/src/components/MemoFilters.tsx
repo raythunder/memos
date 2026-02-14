@@ -32,6 +32,10 @@ const FILTER_CONFIGS: Record<FilterFactor, FilterConfig> = {
     icon: SearchIcon,
     getLabel: (value) => value,
   },
+  semanticSearch: {
+    icon: SearchIcon,
+    getLabel: (value, t) => `${t("memo.search-mode-semantic")}: ${value}`,
+  },
   displayTime: {
     icon: CalendarIcon,
     getLabel: (value) => value,

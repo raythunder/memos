@@ -9,7 +9,7 @@ Last updated: 2026-02-14
 | M0 Contracts and skeleton | DONE | 2026-02-16 | @raythunder | proto + service skeleton |
 | M1 Storage + embedding pipeline | IN_PROGRESS | 2026-02-19 | @raythunder | postgres migration + async jobs |
 | M2 Semantic search API | IN_PROGRESS | 2026-02-22 | @raythunder | retrieval + ACL filtering |
-| M3 Frontend integration | IN_PROGRESS | 2026-02-24 | @raythunder | admin AI config page done; search mode switch pending |
+| M3 Frontend integration | IN_PROGRESS | 2026-02-24 | @raythunder | search mode/hook done; postgres e2e pending |
 | M4 Performance hardening | TODO | 2026-02-26 | @raythunder | 10k benchmark + tuning |
 
 Status enum:
@@ -47,9 +47,9 @@ Status enum:
 ### Frontend
 
 - [x] Add admin AI setting page (`Settings -> AI`) for OpenAI config
-- [ ] Add semantic mode in `SearchBar`
-- [ ] Add semantic query hook in `web/src/hooks/useMemoQueries.ts`
-- [ ] Add semantic result rendering and fallback states
+- [x] Add semantic mode in `SearchBar`
+- [x] Add semantic query hook in `web/src/hooks/useMemoQueries.ts`
+- [x] Add semantic result rendering and fallback states
 
 ### Testing
 
@@ -155,6 +155,39 @@ Next step:
   - Key encryption currently depends on server secret; secret rotation policy should be documented in ops phase.
 - Next step:
   - Implement semantic search mode in frontend search flow and connect to `SearchMemosSemantic`.
+
+#### 2026-02-14 (Frontend semantic mode + hook wiring)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added `keyword/semantic` mode toggle to `SearchBar`.
+  - Added `semanticSearch` filter factor in filter context and filter chips.
+  - Added semantic infinite query hook (`searchMemosSemantic`) in memo query hooks.
+  - Switched `PagedMemoList` data source by search mode:
+    - keyword mode -> `ListMemos`
+    - semantic mode -> `SearchMemosSemantic`
+  - Kept semantic result ordering from backend relevance rank.
+- Files:
+  - `web/src/components/SearchBar.tsx`
+  - `web/src/contexts/MemoFilterContext.tsx`
+  - `web/src/hooks/useMemoFilters.ts`
+  - `web/src/hooks/useMemoQueries.ts`
+  - `web/src/components/PagedMemoList/PagedMemoList.tsx`
+  - `web/src/components/MemoFilters.tsx`
+  - `web/src/locales/en.json`
+  - `web/src/locales/zh-Hans.json`
+- Verification:
+  - `cd web && pnpm lint`
+  - `go test ./server/router/api/v1/... ./store/...`
+  - Browser manual test:
+    - keyword/semantic mode toggle visible
+    - semantic search adds filter chip and switches list source
+    - switching back to keyword clears semantic filter
+  - Screenshot: `.tmp/dev-run/semantic-search-mode.png`
+- Risks/blockers:
+  - Local smoke test used SQLite, semantic API returns expected failed precondition (`semantic search only supports postgres driver`).
+- Next step:
+  - Run full semantic e2e with PostgreSQL + valid OpenAI key and add error-state UX message for provider/driver failures.
 
 ## 6. Local Manual Test Account
 

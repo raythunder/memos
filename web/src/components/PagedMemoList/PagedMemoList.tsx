@@ -4,9 +4,10 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { matchPath } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { userServiceClient } from "@/connect";
+import { useMemoFilterContext } from "@/contexts/MemoFilterContext";
 import { useView } from "@/contexts/ViewContext";
 import { DEFAULT_LIST_MEMOS_PAGE_SIZE } from "@/helpers/consts";
-import { useInfiniteMemos } from "@/hooks/useMemoQueries";
+import { useInfiniteMemos, useInfiniteSemanticMemos } from "@/hooks/useMemoQueries";
 import { userKeys } from "@/hooks/useUserQueries";
 import { Routes } from "@/router";
 import { State } from "@/types/proto/api/v1/common_pb";
@@ -84,26 +85,50 @@ function useAutoFetchWhenNotScrollable({
 const PagedMemoList = (props: Props) => {
   const t = useTranslate();
   const { layout } = useView();
+  const { getFiltersByFactor } = useMemoFilterContext();
   const queryClient = useQueryClient();
 
   // Show memo editor only on the root route
   const showMemoEditor = Boolean(matchPath(Routes.ROOT, window.location.pathname));
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = useInfiniteMemos(
+  const semanticFilterList = getFiltersByFactor("semanticSearch");
+  const semanticQuery = semanticFilterList.length > 0 ? semanticFilterList[0].value.trim() : "";
+  const semanticSearchEnabled = semanticQuery !== "";
+  const shouldEnableQuery = props.enabled ?? true;
+
+  const keywordQueryResult = useInfiniteMemos(
     {
       state: props.state || State.NORMAL,
       orderBy: props.orderBy || "display_time desc",
       filter: props.filter,
       pageSize: props.pageSize || DEFAULT_LIST_MEMOS_PAGE_SIZE,
     },
-    { enabled: props.enabled ?? true },
+    { enabled: shouldEnableQuery && !semanticSearchEnabled },
   );
+  const semanticQueryResult = useInfiniteSemanticMemos(
+    {
+      query: semanticQuery,
+      state: props.state || State.NORMAL,
+      filter: props.filter,
+      pageSize: props.pageSize || DEFAULT_LIST_MEMOS_PAGE_SIZE,
+    },
+    { enabled: shouldEnableQuery && semanticSearchEnabled },
+  );
+
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = semanticSearchEnabled
+    ? semanticQueryResult
+    : keywordQueryResult;
 
   // Flatten pages into a single array of memos
   const memos = useMemo(() => data?.pages.flatMap((page) => page.memos) || [], [data]);
 
-  // Apply custom sorting if provided, otherwise use memos directly
-  const sortedMemoList = useMemo(() => (props.listSort ? props.listSort(memos) : memos), [memos, props.listSort]);
+  // Semantic search should keep backend relevance order.
+  const sortedMemoList = useMemo(() => {
+    if (semanticSearchEnabled) {
+      return memos;
+    }
+    return props.listSort ? props.listSort(memos) : memos;
+  }, [semanticSearchEnabled, memos, props.listSort]);
 
   // Prefetch creators when new data arrives to improve performance
   useEffect(() => {

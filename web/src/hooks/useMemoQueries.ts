@@ -3,14 +3,16 @@ import { FieldMaskSchema } from "@bufbuild/protobuf/wkt";
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { memoServiceClient } from "@/connect";
 import { userKeys } from "@/hooks/useUserQueries";
-import type { ListMemosRequest, Memo } from "@/types/proto/api/v1/memo_service_pb";
-import { ListMemosRequestSchema, MemoSchema } from "@/types/proto/api/v1/memo_service_pb";
+import type { ListMemosRequest, Memo, SearchMemosSemanticRequest } from "@/types/proto/api/v1/memo_service_pb";
+import { ListMemosRequestSchema, MemoSchema, SearchMemosSemanticRequestSchema } from "@/types/proto/api/v1/memo_service_pb";
 
 // Query keys factory for consistent cache management
 export const memoKeys = {
   all: ["memos"] as const,
   lists: () => [...memoKeys.all, "list"] as const,
   list: (filters: Partial<ListMemosRequest>) => [...memoKeys.lists(), filters] as const,
+  semanticLists: () => [...memoKeys.all, "semantic-list"] as const,
+  semanticList: (filters: Partial<SearchMemosSemanticRequest>) => [...memoKeys.semanticLists(), filters] as const,
   details: () => [...memoKeys.all, "detail"] as const,
   detail: (name: string) => [...memoKeys.details(), name] as const,
   comments: (name: string) => [...memoKeys.all, "comments", name] as const,
@@ -32,6 +34,26 @@ export function useInfiniteMemos(request: Partial<ListMemosRequest> = {}, option
     queryFn: async ({ pageParam }) => {
       const response = await memoServiceClient.listMemos(
         create(ListMemosRequestSchema, {
+          ...request,
+          pageToken: pageParam || "",
+        } as Record<string, unknown>),
+      );
+      return response;
+    },
+    initialPageParam: "",
+    getNextPageParam: (lastPage) => lastPage.nextPageToken || undefined,
+    staleTime: 1000 * 60,
+    gcTime: 1000 * 60 * 5,
+    enabled: options?.enabled ?? true,
+  });
+}
+
+export function useInfiniteSemanticMemos(request: Partial<SearchMemosSemanticRequest>, options?: { enabled?: boolean }) {
+  return useInfiniteQuery({
+    queryKey: memoKeys.semanticList(request),
+    queryFn: async ({ pageParam }) => {
+      const response = await memoServiceClient.searchMemosSemantic(
+        create(SearchMemosSemanticRequestSchema, {
           ...request,
           pageToken: pageParam || "",
         } as Record<string, unknown>),

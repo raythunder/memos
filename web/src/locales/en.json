@@ -169,6 +169,8 @@
     "no-memos": "No memos.",
     "order-by": "Order By",
     "search-placeholder": "Search memos...",
+    "search-mode-keyword": "Keyword",
+    "search-mode-semantic": "Semantic",
     "show-less": "Show less",
     "show-more": "Show more",
     "to-do": "To-do",

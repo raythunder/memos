@@ -6,6 +6,7 @@ export type FilterFactor =
   | "tagSearch"
   | "visibility"
   | "contentSearch"
+  | "semanticSearch"
   | "displayTime"
   | "pinned"
   | "property.hasLink"
@@ -23,7 +24,9 @@ export const parseFilterQuery = (query: string | null): MemoFilter[] => {
   if (!query) return [];
   try {
     return query.split(",").map((filterStr) => {
-      const [factor, value] = filterStr.split(":");
+      const separatorIndex = filterStr.indexOf(":");
+      const factor = separatorIndex >= 0 ? filterStr.slice(0, separatorIndex) : filterStr;
+      const value = separatorIndex >= 0 ? filterStr.slice(separatorIndex + 1) : "";
       return {
         factor: factor as FilterFactor,
         value: decodeURIComponent(value || ""),

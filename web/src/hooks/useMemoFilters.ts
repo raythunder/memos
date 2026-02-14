@@ -65,6 +65,9 @@ export const useMemoFilters = (options: UseMemoFiltersOptions = {}): string | un
     for (const filter of filters) {
       if (filter.factor === "contentSearch") {
         conditions.push(`content.contains("${filter.value}")`);
+      } else if (filter.factor === "semanticSearch") {
+        // semanticSearch is handled by semantic endpoint query parameter, not CEL filter.
+        continue;
       } else if (filter.factor === "tagSearch") {
         conditions.push(`tag in ["${filter.value}"]`);
       } else if (filter.factor === "pinned") {
