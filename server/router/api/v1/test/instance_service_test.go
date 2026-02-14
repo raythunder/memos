@@ -300,5 +300,18 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 		aiSetting, err = ts.Store.GetInstanceAISetting(ctx)
 		require.NoError(t, err)
 		require.Empty(t, aiSetting.GetOpenaiApiKeyEncrypted())
+
+		// Negative numeric values should be sanitized to zero.
+		updateReq.Setting.GetAiSetting().OpenaiEmbeddingMaxRetry = -1
+		updateReq.Setting.GetAiSetting().OpenaiEmbeddingRetryBackoffMs = -200
+		updateReq.Setting.GetAiSetting().SemanticEmbeddingConcurrency = -8
+		_, err = ts.Service.UpdateInstanceSetting(userCtx, updateReq)
+		require.NoError(t, err)
+
+		aiSetting, err = ts.Store.GetInstanceAISetting(ctx)
+		require.NoError(t, err)
+		require.Equal(t, int32(0), aiSetting.GetOpenaiEmbeddingMaxRetry())
+		require.Equal(t, int32(0), aiSetting.GetOpenaiEmbeddingRetryBackoffMs())
+		require.Equal(t, int32(0), aiSetting.GetSemanticEmbeddingConcurrency())
 	})
 }

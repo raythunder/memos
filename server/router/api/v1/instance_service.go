@@ -339,9 +339,9 @@ func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1p
 	if setting != nil {
 		updatedSetting.OpenaiBaseUrl = strings.TrimSpace(setting.OpenaiBaseUrl)
 		updatedSetting.OpenaiEmbeddingModel = strings.TrimSpace(setting.OpenaiEmbeddingModel)
-		updatedSetting.OpenaiEmbeddingMaxRetry = setting.OpenaiEmbeddingMaxRetry
-		updatedSetting.OpenaiEmbeddingRetryBackoffMs = setting.OpenaiEmbeddingRetryBackoffMs
-		updatedSetting.SemanticEmbeddingConcurrency = setting.SemanticEmbeddingConcurrency
+		updatedSetting.OpenaiEmbeddingMaxRetry = sanitizeNonNegativeInt32(setting.OpenaiEmbeddingMaxRetry)
+		updatedSetting.OpenaiEmbeddingRetryBackoffMs = sanitizeNonNegativeInt32(setting.OpenaiEmbeddingRetryBackoffMs)
+		updatedSetting.SemanticEmbeddingConcurrency = sanitizeNonNegativeInt32(setting.SemanticEmbeddingConcurrency)
 		if setting.ClearOpenaiApiKey {
 			updatedSetting.OpenaiApiKeyEncrypted = ""
 		}
@@ -358,6 +358,13 @@ func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1p
 		Key:   storepb.InstanceSettingKey_AI,
 		Value: &storepb.InstanceSetting_AiSetting{AiSetting: updatedSetting},
 	})
+}
+
+func sanitizeNonNegativeInt32(value int32) int32 {
+	if value < 0 {
+		return 0
+	}
+	return value
 }
 
 func (s *APIV1Service) GetInstanceAdmin(ctx context.Context) (*v1pb.User, error) {

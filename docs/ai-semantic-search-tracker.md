@@ -544,6 +544,24 @@ Next step:
 - Next step:
   - perform one UI save/readback smoke test on `Settings -> AI` for the three new fields.
 
+#### 2026-02-14 (AI numeric setting sanitization)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added backend sanitization for AI numeric fields during update:
+    - negative values are coerced to `0`
+  - Covered with instance service test assertions to prevent regression.
+- Files:
+  - `server/router/api/v1/instance_service.go`
+  - `server/router/api/v1/test/instance_service_test.go`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/...`
+- Risks/blockers:
+  - none.
+- Next step:
+  - run UI save/readback smoke and capture screenshot evidence.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.
