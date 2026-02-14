@@ -66,6 +66,7 @@ Status enum:
 - [x] Record baseline metrics (`p50/p95/p99`) in local benchmark doc
 - [x] Document optimization gate for future `pgvector` adoption
 - [x] Add operations runbook (config priority, key rotation, failure triage)
+- [x] Add benchmark trend history doc and append script
 - [ ] Run staging trend benchmark with production-like content distribution
 
 ## 4. Decision Log
@@ -395,6 +396,50 @@ Next step:
   - under extreme sustained write throughput, some refresh tasks may timeout before acquiring semaphore.
 - Next step:
   - monitor embedding refresh warning logs and tune concurrency/timeout with benchmark evidence.
+
+#### 2026-02-14 (Benchmark trend automation)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added trend append script `scripts/benchmark-semantic-search-trend.sh`:
+    - runs benchmark helper
+    - parses `ns/op`, `p50/p95/p99`
+    - appends one row into trend markdown file
+  - Added benchmark trend doc `docs/ai-semantic-search-benchmark-trend.md` with baseline seed row.
+  - Synced benchmark/runbook/plan/README docs to reference trend workflow.
+- Files:
+  - `scripts/benchmark-semantic-search-trend.sh`
+  - `docs/ai-semantic-search-benchmark-trend.md`
+  - `docs/ai-semantic-search-benchmark.md`
+  - `docs/ai-semantic-search-operations.md`
+  - `docs/ai-semantic-search-plan.md`
+  - `docs/ai-semantic-search-tracker.md`
+  - `README.md`
+- Verification:
+  - `sh -n scripts/benchmark-semantic-search.sh`
+  - `sh -n scripts/benchmark-semantic-search-trend.sh`
+  - `rg -n "benchmark-trend|benchmark-semantic-search-trend.sh" docs README.md`
+- Risks/blockers:
+  - current script updates markdown files in-repo; teams should decide whether to commit each weekly run or mirror in external observability.
+- Next step:
+  - execute weekly staging runs and keep trend table growing for regression detection.
+
+#### 2026-02-14 (Benchmark trend quick run)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Executed the new trend script once to validate end-to-end append workflow.
+  - Added a quick-check row to trend file with `BENCHTIME=1x`.
+- Files:
+  - `docs/ai-semantic-search-benchmark-trend.md`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `DRIVER=postgres BENCHTIME=1x COUNT=1 NOTE="local quick-check" scripts/benchmark-semantic-search-trend.sh`
+  - Result snapshot: `p95_ms=140.3`
+- Risks/blockers:
+  - single-iteration quick-check (`1x`) is for pipeline validation, not long-term performance decision.
+- Next step:
+  - use default `30x` in weekly runs for stable percentiles.
 
 ## 6. Local Manual Test Account
 

@@ -113,7 +113,9 @@ Escalation rule:
 
 ## 6. Weekly Ops Checklist
 
-1. Run staging benchmark with production-like corpus distribution.
-2. Record `ns/op`, `p50_ms`, `p95_ms`, `p99_ms` in tracker.
-3. Compare trend against last run and flag regressions.
-4. If gate is breached, create optimization task and link to benchmark evidence.
+1. Run staging benchmark with production-like corpus distribution:
+   `DRIVER=postgres NOTE="staging weekly run" scripts/benchmark-semantic-search-trend.sh`.
+2. Confirm new row is appended in `docs/ai-semantic-search-benchmark-trend.md`.
+3. Record `ns/op`, `p50_ms`, `p95_ms`, `p99_ms` in tracker.
+4. Compare trend against last run and flag regressions.
+5. If gate is breached, create optimization task and link to benchmark evidence.

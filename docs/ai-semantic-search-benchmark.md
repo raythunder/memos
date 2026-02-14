@@ -61,5 +61,6 @@ Conclusion:
 
 1. Ensure Docker is running (for postgres test container).
 2. Execute `DRIVER=postgres scripts/benchmark-semantic-search.sh` in repo root.
-3. Record outputs (`ns/op`, `p50_ms`, `p95_ms`, `p99_ms`) to tracker.
-4. If `p95_ms >= 500`, open performance task to evaluate `pgvector` index path.
+3. Append benchmark trend record: `DRIVER=postgres NOTE="local run" scripts/benchmark-semantic-search-trend.sh`.
+4. Record outputs (`ns/op`, `p50_ms`, `p95_ms`, `p99_ms`) to tracker.
+5. If `p95_ms >= 500`, open performance task to evaluate `pgvector` index path.
