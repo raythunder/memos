@@ -58,6 +58,7 @@ Status enum:
 - [x] Service tests for AI setting security (admin-only + API key no echo)
 - [x] Store tests for embedding CRUD
 - [x] Integration smoke tests for semantic endpoint
+- [x] Live semantic smoke test with PostgreSQL + OpenAI (opt-in env)
 
 ### Performance
 
@@ -335,6 +336,47 @@ Next step:
   - normalization defaults to `https://` for scheme-less values; non-HTTPS private endpoints must still set explicit `http://`.
 - Next step:
   - run semantic query smoke test with configured provider endpoint after postgres runtime is available.
+
+#### 2026-02-14 (Live semantic smoke test harness)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added a live OpenAI semantic smoke test on PostgreSQL path:
+    - creates private memos through API
+    - waits for async embedding indexing completion
+    - runs `SearchMemosSemantic` and checks related memo is returned
+  - Test is opt-in to control cost/flakiness:
+    - requires `DRIVER=postgres`
+    - requires `MEMOS_SEMANTIC_LIVE_SMOKE=1`
+    - requires `MEMOS_OPENAI_API_KEY`
+- Files:
+  - `server/router/api/v1/test/memo_semantic_live_smoke_test.go`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/test -run TestSearchMemosSemanticPostgresLiveOpenAI -count=1` (skips unless envs are set)
+- Risks/blockers:
+  - live provider responses and indexing latency may vary by environment/network.
+- Next step:
+  - execute this smoke test in postgres environment with live key and record evidence in tracker.
+
+#### 2026-02-14 (Live semantic smoke execution)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Executed live semantic smoke test with real OpenAI embedding calls on PostgreSQL path.
+  - Verified end-to-end chain:
+    - create memo via API
+    - async embedding indexing completion
+    - semantic query returns related memo
+- Files:
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `DRIVER=postgres MEMOS_SEMANTIC_LIVE_SMOKE=1 MEMOS_OPENAI_BASE_URL=api.v3.cm/v1 go test -v ./server/router/api/v1/test -run TestSearchMemosSemanticPostgresLiveOpenAI -count=1`
+  - Result: `PASS` (`~6.14s` test duration)
+- Risks/blockers:
+  - live smoke depends on external provider latency/network and should remain opt-in.
+- Next step:
+  - keep weekly staging benchmark trend updates and gate checks (`p95 < 500ms`).
 
 ## 6. Local Manual Test Account
 
