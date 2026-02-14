@@ -55,7 +55,7 @@ Status enum:
 
 - [x] Service tests for ACL and visibility
 - [x] Service tests for AI setting security (admin-only + API key no echo)
-- [ ] Store tests for embedding CRUD
+- [x] Store tests for embedding CRUD
 - [ ] Integration smoke tests for semantic endpoint
 
 ## 4. Decision Log
@@ -189,6 +189,26 @@ Next step:
   - Local smoke test used SQLite, semantic API returns expected failed precondition (`semantic search only supports postgres driver`).
 - Next step:
   - Run full semantic e2e with PostgreSQL + valid OpenAI key and add error-state UX message for provider/driver failures.
+
+#### 2026-02-14 (Store embedding tests)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added store test coverage for `memo_embedding`:
+    - non-postgres unsupported-driver behavior
+    - postgres CRUD (upsert/update/list/delete/content_hash)
+    - input validation (`nil` and empty vector)
+- Files:
+  - `store/test/memo_embedding_test.go`
+- Verification:
+  - `DRIVER=sqlite go test -v ./store/test/... -run TestMemoEmbeddingStore`
+  - `DRIVER=postgres go test -v ./store/test/... -run TestMemoEmbeddingStore`
+  - `go test ./server/router/api/v1/... ./store/...`
+  - `cd web && pnpm lint`
+- Risks/blockers:
+  - semantic e2e for real relevance quality still depends on PostgreSQL + valid OpenAI key in runtime.
+- Next step:
+  - add integration smoke test for semantic endpoint in API layer (postgres path).
 
 ## 6. Local Manual Test Account
 
