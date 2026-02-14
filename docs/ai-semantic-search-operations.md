@@ -30,6 +30,11 @@ Semantic embedding config resolves in this order:
    - `MEMOS_OPENAI_EMBEDDING_MODEL`
    - `MEMOS_OPENAI_API_KEY`
 
+OpenAI request tuning envs (optional):
+
+- `MEMOS_OPENAI_EMBEDDING_MAX_RETRY` (default: `2`, allows `0` to disable retries)
+- `MEMOS_OPENAI_EMBEDDING_RETRY_BACKOFF_MS` (default: `100`)
+
 Security notes:
 
 - API key is stored in `system_setting` as ciphertext (`enc:v1:*` payload format).

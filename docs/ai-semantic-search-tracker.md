@@ -484,6 +484,28 @@ Next step:
 - Next step:
   - collect staging metrics under a few concurrency values and pick an ops default per environment class.
 
+#### 2026-02-14 (Configurable OpenAI retry tuning)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added runtime env knobs for OpenAI embedding retry strategy:
+    - `MEMOS_OPENAI_EMBEDDING_MAX_RETRY` (default `2`, supports `0`)
+    - `MEMOS_OPENAI_EMBEDDING_RETRY_BACKOFF_MS` (default `100`)
+  - Updated embedding client to use instance-level retry settings instead of hardcoded constants.
+  - Added parser tests for retry count and backoff fallbacks.
+- Files:
+  - `server/router/api/v1/semantic_embedding_openai.go`
+  - `server/router/api/v1/semantic_embedding_openai_test.go`
+  - `docs/ai-semantic-search-operations.md`
+  - `docs/ai-semantic-search-plan.md`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/...`
+- Risks/blockers:
+  - aggressive retry/backoff values can increase tail latency under sustained upstream instability.
+- Next step:
+  - run staging smoke with tuned values and compare latency/error tradeoff.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.

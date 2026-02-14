@@ -5,8 +5,10 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log/slog"
 	"net/http"
 	"os"
+	"strconv"
 	"strings"
 	"time"
 
@@ -17,6 +19,8 @@ const (
 	openAIBaseURLEnv         = "MEMOS_OPENAI_BASE_URL"
 	openAIAPIKeyEnv          = "MEMOS_OPENAI_API_KEY"
 	openAIEmbeddingModelEnv  = "MEMOS_OPENAI_EMBEDDING_MODEL"
+	openAIEmbeddingMaxRetryEnv = "MEMOS_OPENAI_EMBEDDING_MAX_RETRY"
+	openAIEmbeddingBackoffMSEnv = "MEMOS_OPENAI_EMBEDDING_RETRY_BACKOFF_MS"
 	defaultOpenAIBaseURL     = "https://api.openai.com/v1"
 	defaultEmbeddingModel    = "text-embedding-3-small"
 	openAIEmbeddingUserAgent = "memos-semantic-search/1.0"
@@ -37,6 +41,8 @@ type openAIEmbeddingClient struct {
 	apiKey     string
 	model      string
 	httpClient *http.Client
+	maxRetry   int
+	backoff    time.Duration
 }
 
 type openAIEmbeddingConfig struct {
@@ -61,6 +67,7 @@ func newOpenAIEmbeddingClient(config *openAIEmbeddingConfig) (*openAIEmbeddingCl
 	if model == "" {
 		model = defaultEmbeddingModel
 	}
+	maxRetry, backoff := resolveOpenAIEmbeddingRetryConfig()
 
 	return &openAIEmbeddingClient{
 		baseURL: baseURL,
@@ -69,6 +76,8 @@ func newOpenAIEmbeddingClient(config *openAIEmbeddingConfig) (*openAIEmbeddingCl
 		httpClient: &http.Client{
 			Timeout: 30 * time.Second,
 		},
+		maxRetry: maxRetry,
+		backoff:  backoff,
 	}, nil
 }
 
@@ -154,11 +163,11 @@ func (c *openAIEmbeddingClient) Embed(ctx context.Context, text string) ([]float
 		if err == nil {
 			return embedding, nil
 		}
-		if !retryable || attempt >= openAIEmbeddingMaxRetry {
+		if !retryable || attempt >= c.maxRetry {
 			return nil, err
 		}
 
-		backoffDuration := openAIEmbeddingBackoff * time.Duration(1<<attempt)
+		backoffDuration := c.backoff * time.Duration(1<<attempt)
 		timer := time.NewTimer(backoffDuration)
 		select {
 		case <-ctx.Done():
@@ -226,4 +235,34 @@ func isRetryableOpenAIStatus(statusCode int) bool {
 		return true
 	}
 	return statusCode >= http.StatusInternalServerError
+}
+
+func resolveOpenAIEmbeddingRetryConfig() (int, time.Duration) {
+	maxRetry := parseOpenAIEmbeddingMaxRetry(strings.TrimSpace(os.Getenv(openAIEmbeddingMaxRetryEnv)))
+	backoff := parseOpenAIEmbeddingRetryBackoff(strings.TrimSpace(os.Getenv(openAIEmbeddingBackoffMSEnv)))
+	return maxRetry, backoff
+}
+
+func parseOpenAIEmbeddingMaxRetry(raw string) int {
+	if raw == "" {
+		return openAIEmbeddingMaxRetry
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value < 0 {
+		slog.Warn("invalid OpenAI embedding max retry, fallback to default", "env", openAIEmbeddingMaxRetryEnv, "value", raw)
+		return openAIEmbeddingMaxRetry
+	}
+	return value
+}
+
+func parseOpenAIEmbeddingRetryBackoff(raw string) time.Duration {
+	if raw == "" {
+		return openAIEmbeddingBackoff
+	}
+	value, err := strconv.Atoi(raw)
+	if err != nil || value <= 0 {
+		slog.Warn("invalid OpenAI embedding retry backoff, fallback to default", "env", openAIEmbeddingBackoffMSEnv, "value", raw)
+		return openAIEmbeddingBackoff
+	}
+	return time.Duration(value) * time.Millisecond
 }

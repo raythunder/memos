@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"sync/atomic"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 )
@@ -63,6 +64,8 @@ func TestNewOpenAIEmbeddingClientBaseURLNormalization(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, "https://api.v3.cm/v1", client.baseURL)
 	require.Equal(t, defaultEmbeddingModel, client.model)
+	require.Equal(t, openAIEmbeddingMaxRetry, client.maxRetry)
+	require.Equal(t, openAIEmbeddingBackoff, client.backoff)
 }
 
 func TestNewOpenAIEmbeddingClientRequireAPIKey(t *testing.T) {
@@ -135,4 +138,94 @@ func TestOpenAIEmbeddingClientNoRetryOnUnauthorized(t *testing.T) {
 	require.Error(t, err)
 	require.Contains(t, err.Error(), "invalid api key")
 	require.Equal(t, int32(1), atomic.LoadInt32(&attemptCount))
+}
+
+func TestParseOpenAIEmbeddingMaxRetry(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name     string
+		input    string
+		expected int
+	}{
+		{
+			name:     "empty uses default",
+			input:    "",
+			expected: openAIEmbeddingMaxRetry,
+		},
+		{
+			name:     "valid value",
+			input:    "5",
+			expected: 5,
+		},
+		{
+			name:     "zero is valid",
+			input:    "0",
+			expected: 0,
+		},
+		{
+			name:     "negative falls back",
+			input:    "-1",
+			expected: openAIEmbeddingMaxRetry,
+		},
+		{
+			name:     "invalid falls back",
+			input:    "abc",
+			expected: openAIEmbeddingMaxRetry,
+		},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			actual := parseOpenAIEmbeddingMaxRetry(testCase.input)
+			require.Equal(t, testCase.expected, actual)
+		})
+	}
+}
+
+func TestParseOpenAIEmbeddingRetryBackoff(t *testing.T) {
+	t.Parallel()
+
+	testCases := []struct {
+		name     string
+		input    string
+		expected time.Duration
+	}{
+		{
+			name:     "empty uses default",
+			input:    "",
+			expected: openAIEmbeddingBackoff,
+		},
+		{
+			name:     "valid value in ms",
+			input:    "250",
+			expected: 250 * time.Millisecond,
+		},
+		{
+			name:     "zero falls back",
+			input:    "0",
+			expected: openAIEmbeddingBackoff,
+		},
+		{
+			name:     "negative falls back",
+			input:    "-10",
+			expected: openAIEmbeddingBackoff,
+		},
+		{
+			name:     "invalid falls back",
+			input:    "abc",
+			expected: openAIEmbeddingBackoff,
+		},
+	}
+
+	for _, testCase := range testCases {
+		testCase := testCase
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			actual := parseOpenAIEmbeddingRetryBackoff(testCase.input)
+			require.Equal(t, testCase.expected, actual)
+		})
+	}
 }

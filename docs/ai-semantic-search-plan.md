@@ -93,6 +93,8 @@ Current implementation supports two configuration paths:
    - `MEMOS_OPENAI_API_KEY`
    - `MEMOS_OPENAI_EMBEDDING_MODEL` (default: `text-embedding-3-small`)
    - `MEMOS_OPENAI_BASE_URL` (default: `https://api.openai.com/v1`)
+   - `MEMOS_OPENAI_EMBEDDING_MAX_RETRY` (default: `2`)
+   - `MEMOS_OPENAI_EMBEDDING_RETRY_BACKOFF_MS` (default: `100`)
 
 Security note:
 
