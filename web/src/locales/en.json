@@ -191,6 +191,7 @@
     "deleted-successfully": "Memo deleted successfully",
     "description-is-required": "Description is required",
     "failed-to-embed-memo": "Failed to embed memo",
+    "failed-to-load-data": "Failed to load data.",
     "fill-all": "Please fill in all fields.",
     "fill-all-required-fields": "Please fill all required fields",
     "maximum-upload-size-is": "Maximum allowed upload size is {{size}} MiB",

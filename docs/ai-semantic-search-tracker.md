@@ -167,6 +167,7 @@ Next step:
     - keyword mode -> `ListMemos`
     - semantic mode -> `SearchMemosSemantic`
   - Kept semantic result ordering from backend relevance rank.
+  - Added explicit list error state rendering (semantic/keyword query failures).
 - Files:
   - `web/src/components/SearchBar.tsx`
   - `web/src/contexts/MemoFilterContext.tsx`

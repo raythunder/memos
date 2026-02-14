@@ -192,6 +192,7 @@
     "deleted-successfully": "成功删除！",
     "description-is-required": "请填写说明",
     "failed-to-embed-memo": "嵌入备忘录失败",
+    "failed-to-load-data": "加载数据失败。",
     "fill-all": "请填写所有栏目。",
     "fill-all-required-fields": "请填写所有必填项。",
     "maximum-upload-size-is": "允许的最大上传大小为 {{size}} MiB",

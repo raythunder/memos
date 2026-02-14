@@ -115,7 +115,7 @@ const PagedMemoList = (props: Props) => {
     { enabled: shouldEnableQuery && semanticSearchEnabled },
   );
 
-  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading } = semanticSearchEnabled
+  const { data, fetchNextPage, hasNextPage, isFetchingNextPage, isLoading, isError, error } = semanticSearchEnabled
     ? semanticQueryResult
     : keywordQueryResult;
 
@@ -178,6 +178,11 @@ const PagedMemoList = (props: Props) => {
       {/* Show skeleton loader during initial load */}
       {isLoading ? (
         <Skeleton showCreator={props.showCreator} count={4} />
+      ) : isError ? (
+        <div className="w-full mt-12 mb-8 flex flex-col justify-center items-center italic">
+          <Empty />
+          <p className="mt-2 text-muted-foreground">{error instanceof Error ? error.message : t("message.failed-to-load-data")}</p>
+        </div>
       ) : (
         <>
           <MasonryView
