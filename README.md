@@ -49,6 +49,11 @@ Memos is a privacy-first, self-hosted knowledge base for personal notes, team wi
 - **Developer-Friendly** — Full REST and gRPC APIs for integration with existing workflows.
 - **Clean Interface** — Minimal design with dark mode and mobile-responsive layout.
 
+## Project Planning
+
+- AI Semantic Search Plan: `docs/ai-semantic-search-plan.md`
+- AI Semantic Search Tracker: `docs/ai-semantic-search-tracker.md`
+
 ## Quick Start
 
 ### Docker (Recommended)
