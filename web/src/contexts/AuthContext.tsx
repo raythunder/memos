@@ -4,7 +4,7 @@ import { clearAccessToken } from "@/auth-state";
 import { authServiceClient, shortcutServiceClient, userServiceClient } from "@/connect";
 import { userKeys } from "@/hooks/useUserQueries";
 import type { Shortcut } from "@/types/proto/api/v1/shortcut_service_pb";
-import type { User, UserSetting_GeneralSetting, UserSetting_WebhooksSetting } from "@/types/proto/api/v1/user_service_pb";
+import type { User, UserSetting, UserSetting_GeneralSetting, UserSetting_WebhooksSetting } from "@/types/proto/api/v1/user_service_pb";
 
 interface AuthState {
   currentUser: User | undefined;
@@ -23,6 +23,11 @@ interface AuthContextValue extends AuthState {
 
 const AuthContext = createContext<AuthContextValue | null>(null);
 
+const hasSettingKey = (setting: UserSetting, key: "GENERAL" | "WEBHOOKS"): boolean => {
+  const name = setting.name?.toUpperCase() ?? "";
+  return name.endsWith(`/SETTINGS/${key}`);
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const queryClient = useQueryClient();
   const [state, setState] = useState<AuthState>({
@@ -40,8 +45,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       shortcutServiceClient.listShortcuts({ parent: userName }),
     ]);
 
-    const generalSetting = settings.find((s) => s.value.case === "generalSetting");
-    const webhooksSetting = settings.find((s) => s.value.case === "webhooksSetting");
+    const generalSetting =
+      settings.find((s) => hasSettingKey(s, "GENERAL") && s.value.case === "generalSetting") ||
+      settings.find((s) => s.value.case === "generalSetting");
+    const webhooksSetting =
+      settings.find((s) => hasSettingKey(s, "WEBHOOKS") && s.value.case === "webhooksSetting") ||
+      settings.find((s) => s.value.case === "webhooksSetting");
 
     return {
       userGeneralSetting: generalSetting?.value.case === "generalSetting" ? generalSetting.value.value : undefined,

@@ -1009,13 +1009,21 @@ func convertSettingKeyFromStore(key storepb.UserSetting_Key) string {
 // convertUserSettingFromStore converts store UserSetting to API UserSetting.
 func convertUserSettingFromStore(storeSetting *storepb.UserSetting, userID int32, key storepb.UserSetting_Key) *v1pb.UserSetting {
 	if storeSetting == nil {
-		// Return default setting if none exists
 		settingKey := convertSettingKeyFromStore(key)
+		if settingKey == "unknown" {
+			return nil
+		}
+
+		// Return default setting only for API-supported setting types.
 		setting := &v1pb.UserSetting{
 			Name: fmt.Sprintf("users/%d/settings/%s", userID, settingKey),
 		}
 
 		switch key {
+		case storepb.UserSetting_GENERAL:
+			setting.Value = &v1pb.UserSetting_GeneralSetting_{
+				GeneralSetting: getDefaultUserGeneralSetting(),
+			}
 		case storepb.UserSetting_WEBHOOKS:
 			setting.Value = &v1pb.UserSetting_WebhooksSetting_{
 				WebhooksSetting: &v1pb.UserSetting_WebhooksSetting{
@@ -1023,10 +1031,7 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, userID int32
 				},
 			}
 		default:
-			// Default to general setting
-			setting.Value = &v1pb.UserSetting_GeneralSetting_{
-				GeneralSetting: getDefaultUserGeneralSetting(),
-			}
+			return nil
 		}
 		return setting
 	}
@@ -1068,10 +1073,8 @@ func convertUserSettingFromStore(storeSetting *storepb.UserSetting, userID int32
 			},
 		}
 	default:
-		// Default to general setting if unknown key
-		setting.Value = &v1pb.UserSetting_GeneralSetting_{
-			GeneralSetting: getDefaultUserGeneralSetting(),
-		}
+		// Hide non-API settings from API responses.
+		return nil
 	}
 
 	return setting
