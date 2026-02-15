@@ -582,6 +582,23 @@ Next step:
 - Next step:
   - collect staging write-burst logs to verify expected queueing behavior under concurrency updates.
 
+#### 2026-02-14 (Frontend non-negative guard for AI numeric inputs)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Added frontend parser guard for AI numeric input fields:
+    - empty/invalid/negative input is normalized to `0`
+  - Keeps UI behavior aligned with backend non-negative contract while minimizing failed save attempts.
+- Files:
+  - `web/src/components/Settings/AISettings.tsx`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `cd web && pnpm lint`
+- Risks/blockers:
+  - none.
+- Next step:
+  - add component-level tests for numeric input normalization when frontend test harness is available.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.

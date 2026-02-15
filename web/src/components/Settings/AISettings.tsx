@@ -34,6 +34,18 @@ const AISettings = () => {
     );
   };
 
+  const parseNonNegativeIntInput = (value: string): number => {
+    const trimmed = value.trim();
+    if (trimmed === "") {
+      return 0;
+    }
+    const parsed = Number.parseInt(trimmed, 10);
+    if (!Number.isFinite(parsed) || parsed < 0) {
+      return 0;
+    }
+    return parsed;
+  };
+
   const allowSave = useMemo(() => {
     if (aiSetting.clearOpenaiApiKey) {
       return true;
@@ -107,7 +119,7 @@ const AISettings = () => {
             value={aiSetting.openaiEmbeddingMaxRetry === 0 ? "" : String(aiSetting.openaiEmbeddingMaxRetry)}
             onChange={(event) =>
               updatePartialSetting({
-                openaiEmbeddingMaxRetry: Number.parseInt(event.target.value, 10) || 0,
+                openaiEmbeddingMaxRetry: parseNonNegativeIntInput(event.target.value),
               })
             }
           />
@@ -122,7 +134,7 @@ const AISettings = () => {
             value={aiSetting.openaiEmbeddingRetryBackoffMs === 0 ? "" : String(aiSetting.openaiEmbeddingRetryBackoffMs)}
             onChange={(event) =>
               updatePartialSetting({
-                openaiEmbeddingRetryBackoffMs: Number.parseInt(event.target.value, 10) || 0,
+                openaiEmbeddingRetryBackoffMs: parseNonNegativeIntInput(event.target.value),
               })
             }
           />
@@ -140,7 +152,7 @@ const AISettings = () => {
             value={aiSetting.semanticEmbeddingConcurrency === 0 ? "" : String(aiSetting.semanticEmbeddingConcurrency)}
             onChange={(event) =>
               updatePartialSetting({
-                semanticEmbeddingConcurrency: Number.parseInt(event.target.value, 10) || 0,
+                semanticEmbeddingConcurrency: parseNonNegativeIntInput(event.target.value),
               })
             }
           />
