@@ -69,7 +69,7 @@ Server secret dependency:
 ### `semantic search only supports postgres driver`
 
 - Cause: non-postgres runtime (`sqlite`/`mysql`).
-- Action: run semantic workloads with `MEMOS_DRIVER=postgres`.
+- Action: run semantic workloads with `MEMOS_DRIVER=postgres` and a valid `MEMOS_DSN`.
 
 ### `semantic search is not configured`
 
@@ -92,7 +92,48 @@ Server secret dependency:
   - update memo content (or re-save) to trigger re-index;
   - verify API key/model configuration.
 
-## 5. Performance Gate and Benchmark
+## 5. Local Manual Startup (Semantic Search)
+
+Use this flow when manually testing semantic search in local development.
+
+1. Start PostgreSQL:
+
+```bash
+docker run -d --name memos-pg \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=memos \
+  -p 5432:5432 \
+  postgres:16
+```
+
+2. Start backend from repo root with Postgres runtime:
+
+```bash
+MEMOS_DATA="$(pwd)/.tmp/memos-dev" \
+MEMOS_DRIVER=postgres \
+MEMOS_DSN="postgres://postgres:postgres@127.0.0.1:5432/memos?sslmode=disable" \
+go run ./cmd/memos --port 8081
+```
+
+3. Start frontend in another terminal:
+
+```bash
+cd web
+pnpm dev --host 127.0.0.1 --port 5173
+```
+
+4. Configure AI provider:
+   - preferred: `Settings -> AI` in frontend;
+   - fallback envs: `MEMOS_OPENAI_API_KEY`, `MEMOS_OPENAI_BASE_URL`, `MEMOS_OPENAI_EMBEDDING_MODEL`.
+
+Expected checks:
+
+- backend startup output shows `Database driver: postgres`;
+- semantic query without valid AI config returns `semantic search is not configured`;
+- after AI config and memo indexing, semantic query returns related memos.
+
+## 6. Performance Gate and Benchmark
 
 Latency target (10k corpus baseline):
 
@@ -124,7 +165,7 @@ Escalation rule:
   - benchmark `p95 >= 500ms`.
 - when triggered, open a task to evaluate `pgvector` index path.
 
-## 6. Weekly Ops Checklist
+## 7. Weekly Ops Checklist
 
 1. Run trend benchmark with production-like corpus distribution.
    Preferred: staging environment

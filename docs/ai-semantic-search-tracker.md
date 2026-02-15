@@ -693,6 +693,24 @@ Next step:
 - Next step:
   - once staging access is available, append one staging-tagged trend row and compare with local baseline.
 
+#### 2026-02-15 (Local semantic startup docs alignment)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Updated local manual startup commands to use PostgreSQL runtime required by semantic search.
+  - Added explicit `MEMOS_DRIVER=postgres` and `MEMOS_DSN` startup example.
+  - Added a dedicated local semantic startup section in operations runbook.
+- Files:
+  - `docs/ai-semantic-search-tracker.md`
+  - `docs/ai-semantic-search-operations.md`
+- Verification:
+  - documentation consistency review across tracker and operations runbook.
+  - confirmed local startup command now includes postgres driver and DSN.
+- Risks/blockers:
+  - the provided Docker command assumes local `5432` port is available.
+- Next step:
+  - run local semantic smoke flow and validate expected `postgres-only` / `not configured` / configured-success states.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.
@@ -700,12 +718,24 @@ This account is for local development verification only.
 - Username: `admin`
 - Password: `Passw0rd!`
 - Data directory: `.tmp/memos-dev`
+- Recommended Postgres DSN: `postgres://postgres:postgres@127.0.0.1:5432/memos?sslmode=disable`
 
 Startup commands:
 
 ```bash
-# backend (repo root)
-MEMOS_DATA="$(pwd)/.tmp/memos-dev" go run ./cmd/memos --port 8081
+# postgres (run once, or restart if already created)
+docker run -d --name memos-pg \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=memos \
+  -p 5432:5432 \
+  postgres:16
+
+# backend (repo root, semantic search requires postgres driver)
+MEMOS_DATA="$(pwd)/.tmp/memos-dev" \
+MEMOS_DRIVER=postgres \
+MEMOS_DSN="postgres://postgres:postgres@127.0.0.1:5432/memos?sslmode=disable" \
+go run ./cmd/memos --port 8081
 
 # frontend (new terminal)
 cd web
