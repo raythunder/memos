@@ -1,0 +1,42 @@
+name: memos-semantic-search
+
+services:
+  postgres:
+    image: postgres:16
+    container_name: memos-postgres
+    environment:
+      POSTGRES_USER: memos
+      POSTGRES_PASSWORD: memos
+      POSTGRES_DB: memos
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U memos -d memos"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    restart: unless-stopped
+
+  memos:
+    image: ${MEMOS_IMAGE:-ghcr.io/your-github-username/memos:fork-latest}
+    container_name: memos
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "5230:5230"
+    environment:
+      MEMOS_DRIVER: postgres
+      MEMOS_DSN: postgres://memos:memos@postgres:5432/memos?sslmode=disable
+      MEMOS_PORT: 5230
+      # Optional environment fallback. You can also set these in Settings -> AI.
+      MEMOS_OPENAI_API_KEY: ${MEMOS_OPENAI_API_KEY:-}
+      MEMOS_OPENAI_BASE_URL: ${MEMOS_OPENAI_BASE_URL:-https://api.openai.com/v1}
+      MEMOS_OPENAI_EMBEDDING_MODEL: ${MEMOS_OPENAI_EMBEDDING_MODEL:-text-embedding-3-small}
+    volumes:
+      - memos-data:/var/opt/memos
+    restart: unless-stopped
+
+volumes:
+  postgres-data:
+  memos-data:
