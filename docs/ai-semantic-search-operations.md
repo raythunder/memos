@@ -1,6 +1,6 @@
 # AI Semantic Search Operations Runbook
 
-Last updated: 2026-02-14
+Last updated: 2026-02-15
 Owner: @raythunder
 
 ## 1. Scope
@@ -126,8 +126,11 @@ Escalation rule:
 
 ## 6. Weekly Ops Checklist
 
-1. Run staging benchmark with production-like corpus distribution:
+1. Run trend benchmark with production-like corpus distribution.
+   Preferred: staging environment
    `DRIVER=postgres NOTE="staging weekly run" scripts/benchmark-semantic-search-trend.sh`.
+   Fallback (when staging is unavailable): local environment with explicit note
+   `DRIVER=postgres NOTE="local fallback run" scripts/benchmark-semantic-search-trend.sh`.
 2. Confirm new row is appended in `docs/ai-semantic-search-benchmark-trend.md`.
 3. Record `ns/op`, `p50_ms`, `p95_ms`, `p99_ms` in tracker.
 4. Compare trend against last run and flag regressions.

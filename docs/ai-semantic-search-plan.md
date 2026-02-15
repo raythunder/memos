@@ -1,6 +1,6 @@
 # AI Semantic Search Plan (Memos)
 
-Last updated: 2026-02-14
+Last updated: 2026-02-15
 Owner: @raythunder
 
 ## 1. Scope and Constraints
@@ -177,6 +177,11 @@ Current baseline (2026-02-14):
 - Detailed command/result: `docs/ai-semantic-search-benchmark.md`.
 - Trend history: `docs/ai-semantic-search-benchmark-trend.md`.
 - Operations runbook: `docs/ai-semantic-search-operations.md`.
+
+Latest local trend snapshot (2026-02-15):
+
+- `DRIVER=postgres` trend run reports `p50=138.6ms`, `p95=143.7ms`, `p99=144.8ms` at 10k corpus.
+- Staging run remains preferred; when staging is unavailable, local fallback is accepted with explicit note in trend history.
 
 ## 5. Engineering Principles Mapping
 
