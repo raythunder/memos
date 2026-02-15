@@ -5,6 +5,8 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
 )
@@ -301,17 +303,20 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, aiSetting.GetOpenaiApiKeyEncrypted())
 
-		// Negative numeric values should be sanitized to zero.
+		// Negative numeric values should be rejected with invalid argument.
 		updateReq.Setting.GetAiSetting().OpenaiEmbeddingMaxRetry = -1
 		updateReq.Setting.GetAiSetting().OpenaiEmbeddingRetryBackoffMs = -200
 		updateReq.Setting.GetAiSetting().SemanticEmbeddingConcurrency = -8
 		_, err = ts.Service.UpdateInstanceSetting(userCtx, updateReq)
-		require.NoError(t, err)
+		require.Error(t, err)
+		st, ok := status.FromError(err)
+		require.True(t, ok)
+		require.Equal(t, codes.InvalidArgument, st.Code())
 
 		aiSetting, err = ts.Store.GetInstanceAISetting(ctx)
 		require.NoError(t, err)
-		require.Equal(t, int32(0), aiSetting.GetOpenaiEmbeddingMaxRetry())
-		require.Equal(t, int32(0), aiSetting.GetOpenaiEmbeddingRetryBackoffMs())
-		require.Equal(t, int32(0), aiSetting.GetSemanticEmbeddingConcurrency())
+		require.Equal(t, int32(3), aiSetting.GetOpenaiEmbeddingMaxRetry())
+		require.Equal(t, int32(150), aiSetting.GetOpenaiEmbeddingRetryBackoffMs())
+		require.Equal(t, int32(10), aiSetting.GetSemanticEmbeddingConcurrency())
 	})
 }

@@ -548,9 +548,9 @@ Next step:
 
 - Owner: @raythunder + Codex
 - What changed:
-  - Added backend sanitization for AI numeric fields during update:
-    - negative values are coerced to `0`
-  - Covered with instance service test assertions to prevent regression.
+  - Added backend validation for AI numeric fields during update:
+    - negative values are rejected with `InvalidArgument`
+  - Updated instance service test assertions to verify rejection and no persisted mutation on invalid input.
 - Files:
   - `server/router/api/v1/instance_service.go`
   - `server/router/api/v1/test/instance_service_test.go`

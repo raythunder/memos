@@ -120,6 +120,9 @@ func (s *APIV1Service) UpdateInstanceSetting(ctx context.Context, request *v1pb.
 		instanceSetting, err = s.Store.UpsertInstanceSetting(ctx, updateSetting)
 	}
 	if err != nil {
+		if st, ok := status.FromError(err); ok && st.Code() != codes.Unknown {
+			return nil, err
+		}
 		return nil, status.Errorf(codes.Internal, "failed to upsert instance setting: %v", err)
 	}
 
@@ -337,11 +340,14 @@ func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1p
 		updatedSetting.OpenaiApiKeyEncrypted = existingSetting.OpenaiApiKeyEncrypted
 	}
 	if setting != nil {
+		if err := validateInstanceAISetting(setting); err != nil {
+			return nil, err
+		}
 		updatedSetting.OpenaiBaseUrl = strings.TrimSpace(setting.OpenaiBaseUrl)
 		updatedSetting.OpenaiEmbeddingModel = strings.TrimSpace(setting.OpenaiEmbeddingModel)
-		updatedSetting.OpenaiEmbeddingMaxRetry = sanitizeNonNegativeInt32(setting.OpenaiEmbeddingMaxRetry)
-		updatedSetting.OpenaiEmbeddingRetryBackoffMs = sanitizeNonNegativeInt32(setting.OpenaiEmbeddingRetryBackoffMs)
-		updatedSetting.SemanticEmbeddingConcurrency = sanitizeNonNegativeInt32(setting.SemanticEmbeddingConcurrency)
+		updatedSetting.OpenaiEmbeddingMaxRetry = setting.OpenaiEmbeddingMaxRetry
+		updatedSetting.OpenaiEmbeddingRetryBackoffMs = setting.OpenaiEmbeddingRetryBackoffMs
+		updatedSetting.SemanticEmbeddingConcurrency = setting.SemanticEmbeddingConcurrency
 		if setting.ClearOpenaiApiKey {
 			updatedSetting.OpenaiApiKeyEncrypted = ""
 		}
@@ -367,11 +373,21 @@ func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1p
 	return instanceSetting, nil
 }
 
-func sanitizeNonNegativeInt32(value int32) int32 {
-	if value < 0 {
-		return 0
+func validateInstanceAISetting(setting *v1pb.InstanceSetting_AISetting) error {
+	if setting == nil {
+		return nil
 	}
-	return value
+
+	if setting.OpenaiEmbeddingMaxRetry < 0 {
+		return status.Errorf(codes.InvalidArgument, "openai_embedding_max_retry must be non-negative")
+	}
+	if setting.OpenaiEmbeddingRetryBackoffMs < 0 {
+		return status.Errorf(codes.InvalidArgument, "openai_embedding_retry_backoff_ms must be non-negative")
+	}
+	if setting.SemanticEmbeddingConcurrency < 0 {
+		return status.Errorf(codes.InvalidArgument, "semantic_embedding_concurrency must be non-negative")
+	}
+	return nil
 }
 
 func (s *APIV1Service) GetInstanceAdmin(ctx context.Context) (*v1pb.User, error) {
