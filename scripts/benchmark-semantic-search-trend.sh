@@ -28,6 +28,11 @@ if [ -z "${NS_PER_OP}" ] || [ -z "${P50_MS}" ] || [ -z "${P95_MS}" ] || [ -z "${
   exit 1
 fi
 
+if [ "${NS_PER_OP}" = "n/a" ] || [ "${P50_MS}" = "n/a" ] || [ "${P95_MS}" = "n/a" ] || [ "${P99_MS}" = "n/a" ]; then
+  echo "error: parsed benchmark summary contains n/a metric(s)"
+  exit 1
+fi
+
 RUN_AT_UTC="$(date -u '+%Y-%m-%d %H:%M:%S UTC')"
 GIT_SHA="$(git rev-parse --short HEAD)"
 

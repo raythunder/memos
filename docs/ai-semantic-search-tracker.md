@@ -648,6 +648,32 @@ Next step:
 - Next step:
   - execute staging trend benchmark with production-like corpus distribution to close M4 pending item.
 
+#### 2026-02-15 (Benchmark trend parser hardening + local trend run)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Fixed benchmark parser fragility caused by interleaved runtime logs in benchmark output.
+  - Updated trend script to fail fast when parsed metrics contain `n/a`, preventing invalid trend rows.
+  - Removed one invalid local trend row (`n/a` metrics) and re-ran trend benchmark to append a valid row.
+- Files:
+  - `scripts/benchmark-semantic-search.sh`
+  - `scripts/benchmark-semantic-search-trend.sh`
+  - `docs/ai-semantic-search-benchmark-trend.md`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `sh -n scripts/benchmark-semantic-search.sh`
+  - `sh -n scripts/benchmark-semantic-search-trend.sh`
+  - `DRIVER=postgres NOTE="local trend run after extended live regression (parser fixed)" scripts/benchmark-semantic-search-trend.sh`
+  - Local trend snapshot appended:
+    - `ns/op=138899850`
+    - `p50_ms=138.6`
+    - `p95_ms=143.7`
+    - `p99_ms=144.8`
+- Risks/blockers:
+  - this run is local baseline evidence, not staging production-like distribution evidence.
+- Next step:
+  - run the same trend script in staging with production-like corpus distribution and record row with `NOTE="staging weekly run"`.
+
 ## 6. Local Manual Test Account
 
 This account is for local development verification only.

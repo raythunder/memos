@@ -27,9 +27,9 @@ DRIVER=postgres go test "$BENCHMARK_PACKAGE" \
   -benchtime "$BENCHTIME" \
   -count "$COUNT" "$@" | tee "$OUTPUT_FILE"
 
-RESULT_LINE="$(grep "$BENCHMARK_NAME" "$OUTPUT_FILE" | tail -n 1 || true)"
+RESULT_LINE="$(awk '/ns\/op/ && /p50_ms/ && /p95_ms/ && /p99_ms/ {line=$0} END {print line}' "$OUTPUT_FILE")"
 if [ -z "$RESULT_LINE" ]; then
-  echo "error: benchmark output does not contain ${BENCHMARK_NAME}"
+  echo "error: benchmark output does not contain percentile metric line"
   exit 1
 fi
 
