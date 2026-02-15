@@ -33,14 +33,13 @@ func TestConvertUserSettingFromStoreGeneralReturnsValue(t *testing.T) {
 
 	result := convertUserSettingFromStore(setting, 1, setting.Key)
 	if result == nil {
-		t.Fatalf("expected non-nil result for general setting")
+		t.Fatal("expected non-nil result for general setting")
 	}
 	general := result.GetGeneralSetting()
 	if general == nil {
-		t.Fatalf("expected general setting in result")
+		t.Fatal("expected general setting in result")
 	}
 	if general.Locale != "zh-Hans" {
 		t.Fatalf("expected locale zh-Hans, got %q", general.Locale)
 	}
 }
-

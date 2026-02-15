@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/stretchr/testify/require"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
@@ -309,7 +310,7 @@ func waitForMemoEmbeddingReady(ctx context.Context, st *store.Store, memoIDs []i
 			return nil
 		}
 		if time.Now().After(deadline) {
-			return fmt.Errorf("timed out waiting memo embeddings, got %d/%d", len(embeddingMap), len(memoIDs))
+			return errors.Errorf("timed out waiting memo embeddings, got %d/%d", len(embeddingMap), len(memoIDs))
 		}
 		time.Sleep(500 * time.Millisecond)
 	}

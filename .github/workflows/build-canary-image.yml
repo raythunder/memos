@@ -10,6 +10,7 @@ concurrency:
 
 jobs:
   build-frontend:
+    if: github.repository == 'usememos/memos'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -46,6 +47,7 @@ jobs:
           retention-days: 1
 
   build-push:
+    if: github.repository == 'usememos/memos'
     needs: build-frontend
     runs-on: ubuntu-latest
     permissions:
@@ -111,6 +113,7 @@ jobs:
           retention-days: 1
 
   merge:
+    if: github.repository == 'usememos/memos'
     needs: build-push
     runs-on: ubuntu-latest
     permissions:

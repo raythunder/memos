@@ -99,7 +99,7 @@ func TestSetEmbeddingSemaphoreLimit(t *testing.T) {
 	service.setEmbeddingSemaphoreLimit(1)
 	semaphoreOne := service.getEmbeddingSemaphore()
 	if semaphoreOne == nil {
-		t.Fatalf("embedding semaphore should not be nil")
+		t.Fatal("embedding semaphore should not be nil")
 	}
 
 	ctx := context.Background()
@@ -110,17 +110,17 @@ func TestSetEmbeddingSemaphoreLimit(t *testing.T) {
 	timeoutCtx, cancel := context.WithTimeout(ctx, 20*time.Millisecond)
 	defer cancel()
 	if err := semaphoreOne.Acquire(timeoutCtx, 1); err == nil {
-		t.Fatalf("expected second acquire to fail due limit")
+		t.Fatal("expected second acquire to fail due limit")
 	}
 	semaphoreOne.Release(1)
 
 	service.setEmbeddingSemaphoreLimit(2)
 	semaphoreTwo := service.getEmbeddingSemaphore()
 	if semaphoreTwo == nil {
-		t.Fatalf("updated embedding semaphore should not be nil")
+		t.Fatal("updated embedding semaphore should not be nil")
 	}
 	if semaphoreTwo == semaphoreOne {
-		t.Fatalf("expected semaphore to be replaced on limit update")
+		t.Fatal("expected semaphore to be replaced on limit update")
 	}
 	if err := semaphoreTwo.Acquire(ctx, 2); err != nil {
 		t.Fatalf("failed to acquire updated semaphore with limit=2: %v", err)

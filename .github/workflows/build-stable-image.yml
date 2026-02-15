@@ -9,6 +9,7 @@ on:
 
 jobs:
   prepare:
+    if: github.repository == 'usememos/memos'
     runs-on: ubuntu-latest
     outputs:
       version: ${{ steps.version.outputs.version }}
@@ -23,6 +24,7 @@ jobs:
           fi
 
   build-frontend:
+    if: github.repository == 'usememos/memos'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -59,6 +61,7 @@ jobs:
           retention-days: 1
 
   build-push:
+    if: github.repository == 'usememos/memos'
     needs: [prepare, build-frontend]
     runs-on: ubuntu-latest
     permissions:
@@ -125,6 +128,7 @@ jobs:
           retention-days: 1
 
   merge:
+    if: github.repository == 'usememos/memos'
     needs: [prepare, build-push]
     runs-on: ubuntu-latest
     permissions:

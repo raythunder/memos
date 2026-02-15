@@ -30,7 +30,8 @@ func encryptSensitiveValue(secret string, plainText string) (string, error) {
 	}
 
 	cipherText := aead.Seal(nil, nonce, []byte(plainText), nil)
-	payload := append(nonce, cipherText...)
+	nonce = append(nonce, cipherText...)
+	payload := nonce
 	return sensitiveValueCipherPrefix + base64.StdEncoding.EncodeToString(payload), nil
 }
 
