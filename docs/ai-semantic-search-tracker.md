@@ -1,6 +1,6 @@
 # AI Semantic Search Tracker
 
-Last updated: 2026-02-14
+Last updated: 2026-02-15
 
 ## 1. Status Board
 
@@ -598,6 +598,28 @@ Next step:
   - none.
 - Next step:
   - add component-level tests for numeric input normalization when frontend test harness is available.
+
+#### 2026-02-15 (Live semantic corpus expansion + real provider verification)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Expanded live semantic smoke corpus from 2 memos to 12 memos across multiple topics (backend reliability, recipe, hiking, etc.).
+  - Added 3 real-query scenarios with top-N relevance assertions, so test validates more than one keyword path.
+  - Added query-result logging (top results + latency) for direct evidence in CI/local live runs.
+- Files:
+  - `server/router/api/v1/test/memo_semantic_live_smoke_test.go`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/test -run TestSearchMemosSemanticPostgresLiveOpenAI -count=1`
+  - `DRIVER=postgres MEMOS_SEMANTIC_LIVE_SMOKE=1 MEMOS_OPENAI_API_KEY=<redacted> MEMOS_OPENAI_BASE_URL=api.v3.cm/v1 go test -v ./server/router/api/v1/test -run TestSearchMemosSemanticPostgresLiveOpenAI -count=1`
+  - Live run snapshot:
+    - backend reliability query: top3 all hit expected backend memos, latency `655ms`
+    - recipe query: top1 hit sourdough memo, latency `404ms`
+    - hiking query: top2 hit hiking memos, latency `486ms`
+- Risks/blockers:
+  - live relevance order may drift slightly when upstream embedding model/provider behavior changes.
+- Next step:
+  - add one larger (30-50 memo) optional live scenario for periodic relevance regression checks.
 
 ## 6. Local Manual Test Account
 
