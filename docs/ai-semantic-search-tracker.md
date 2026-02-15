@@ -60,6 +60,7 @@ Status enum:
 - [x] Store tests for embedding CRUD
 - [x] Integration smoke tests for semantic endpoint
 - [x] Live semantic smoke test with PostgreSQL + OpenAI (opt-in env)
+- [x] Optional extended live semantic smoke test (48-memo corpus, opt-in env)
 
 ### Performance
 
@@ -620,6 +621,32 @@ Next step:
   - live relevance order may drift slightly when upstream embedding model/provider behavior changes.
 - Next step:
   - add one larger (30-50 memo) optional live scenario for periodic relevance regression checks.
+
+#### 2026-02-15 (Extended live semantic regression coverage)
+
+- Owner: @raythunder + Codex
+- What changed:
+  - Refactored live semantic smoke logic into shared runner to keep standard and extended modes DRY.
+  - Added opt-in extended live test:
+    - test name: `TestSearchMemosSemanticPostgresLiveOpenAIExtended`
+    - env gate: `MEMOS_SEMANTIC_LIVE_EXTENDED=1`
+    - corpus size: 48 memos (base business scenarios + generated distractor topics).
+  - Added one extra distributed-systems scenario to strengthen semantic relevance coverage.
+- Files:
+  - `server/router/api/v1/test/memo_semantic_live_smoke_test.go`
+  - `docs/ai-semantic-search-tracker.md`
+- Verification:
+  - `go test ./server/router/api/v1/test -run TestSearchMemosSemanticPostgresLiveOpenAI -count=1`
+  - `DRIVER=postgres MEMOS_SEMANTIC_LIVE_SMOKE=1 MEMOS_SEMANTIC_LIVE_EXTENDED=1 MEMOS_OPENAI_API_KEY=<redacted> MEMOS_OPENAI_BASE_URL=api.v3.cm/v1 go test -v ./server/router/api/v1/test -run TestSearchMemosSemanticPostgresLiveOpenAIExtended -count=1`
+  - Live run snapshot:
+    - backend reliability query: expected backend memos in top3, latency `1.142s`
+    - recipe query: sourdough memo at top1, latency `508ms`
+    - hiking query: hiking memos in top2, latency `603ms`
+    - distributed systems query: reading-notes memo at top1, latency `647ms`
+- Risks/blockers:
+  - extended live runs consume more external embedding requests; keep opt-in gating to avoid accidental cost.
+- Next step:
+  - execute staging trend benchmark with production-like corpus distribution to close M4 pending item.
 
 ## 6. Local Manual Test Account
 

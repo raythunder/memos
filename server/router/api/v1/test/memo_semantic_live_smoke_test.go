@@ -15,7 +15,11 @@ import (
 	"github.com/usememos/memos/store"
 )
 
-const liveSemanticSmokeEnv = "MEMOS_SEMANTIC_LIVE_SMOKE"
+const (
+	liveSemanticSmokeEnv         = "MEMOS_SEMANTIC_LIVE_SMOKE"
+	liveSemanticExtendedSmokeEnv = "MEMOS_SEMANTIC_LIVE_EXTENDED"
+	liveSemanticExtendedMemoSize = 48
+)
 
 type liveSemanticMemoSeed struct {
 	key     string
@@ -27,9 +31,21 @@ type liveSemanticQueryScenario struct {
 	query        string
 	expectedKeys []string
 	topN         int
+	pageSize     int
 }
 
 func TestSearchMemosSemanticPostgresLiveOpenAI(t *testing.T) {
+	runLiveSemanticOpenAISmoke(t, false)
+}
+
+func TestSearchMemosSemanticPostgresLiveOpenAIExtended(t *testing.T) {
+	if os.Getenv(liveSemanticExtendedSmokeEnv) != "1" {
+		t.Skipf("set %s=1 to enable extended live semantic smoke test", liveSemanticExtendedSmokeEnv)
+	}
+	runLiveSemanticOpenAISmoke(t, true)
+}
+
+func runLiveSemanticOpenAISmoke(t *testing.T, extended bool) {
 	if os.Getenv("DRIVER") != "postgres" {
 		t.Skip("live semantic smoke test requires DRIVER=postgres")
 	}
@@ -48,7 +64,86 @@ func TestSearchMemosSemanticPostgresLiveOpenAI(t *testing.T) {
 	require.NoError(t, err)
 	userCtx := ts.CreateUserContext(ctx, user.ID)
 
-	memoSeeds := []liveSemanticMemoSeed{
+	memoSeeds := buildLiveSemanticMemoSeeds(extended)
+	t.Logf("[live-semantic] mode=%s corpus=%d", liveSemanticModeLabel(extended), len(memoSeeds))
+
+	memoNameByKey, memoContentByName := make(map[string]string, len(memoSeeds)), make(map[string]string, len(memoSeeds))
+	memoIDs := make([]int32, 0, len(memoSeeds))
+	for _, seed := range memoSeeds {
+		memo, createErr := ts.Service.CreateMemo(userCtx, &v1pb.CreateMemoRequest{
+			Memo: &v1pb.Memo{
+				Content:    seed.content,
+				Visibility: v1pb.Visibility_PRIVATE,
+			},
+		})
+		require.NoErrorf(t, createErr, "failed to create memo seed %q", seed.key)
+
+		memoNameByKey[seed.key] = memo.Name
+		memoContentByName[memo.Name] = seed.content
+
+		uid := strings.TrimPrefix(memo.Name, "memos/")
+		storeMemo, getErr := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &uid})
+		require.NoErrorf(t, getErr, "failed to query store memo for seed %q", seed.key)
+		require.NotNil(t, storeMemo)
+		memoIDs = append(memoIDs, storeMemo.ID)
+	}
+
+	waitTimeout := 2*time.Minute + time.Duration(len(memoSeeds))*4*time.Second
+	require.NoError(t, waitForMemoEmbeddingReady(ctx, ts.Store, memoIDs, waitTimeout))
+
+	scenarios := buildLiveSemanticQueryScenarios(extended)
+	for _, scenario := range scenarios {
+		startedAt := time.Now()
+		response, searchErr := ts.Service.SearchMemosSemantic(userCtx, &v1pb.SearchMemosSemanticRequest{
+			Query:    scenario.query,
+			PageSize: int32(scenario.pageSize),
+		})
+		require.NoErrorf(t, searchErr, "live semantic query failed for scenario %q", scenario.name)
+		require.NotEmptyf(t, response.Memos, "empty semantic result for scenario %q", scenario.name)
+
+		topN := scenario.topN
+		if topN <= 0 || topN > len(response.Memos) {
+			topN = len(response.Memos)
+		}
+
+		resultSummary := make([]string, 0, topN)
+		topResultNames := make([]string, 0, topN)
+		for index, memo := range response.Memos[:topN] {
+			topResultNames = append(topResultNames, memo.Name)
+			resultSummary = append(resultSummary, fmt.Sprintf("%d)%s => %s", index+1, memo.Name, memoContentByName[memo.Name]))
+		}
+
+		t.Logf(
+			"[live-semantic] mode=%s scenario=%q query=%q latency=%s top%d=%s",
+			liveSemanticModeLabel(extended),
+			scenario.name,
+			scenario.query,
+			time.Since(startedAt).Round(time.Millisecond),
+			topN,
+			strings.Join(resultSummary, " | "),
+		)
+
+		matched := false
+		for _, expectedKey := range scenario.expectedKeys {
+			if slices.Contains(topResultNames, memoNameByKey[expectedKey]) {
+				matched = true
+				break
+			}
+		}
+		require.Truef(
+			t,
+			matched,
+			"expected one of %v to appear in top %d for scenario %q, got %v",
+			scenario.expectedKeys,
+			topN,
+			scenario.name,
+			topResultNames,
+		)
+	}
+}
+
+func buildLiveSemanticMemoSeeds(extended bool) []liveSemanticMemoSeed {
+	seeds := []liveSemanticMemoSeed{
 		{
 			key:     "backend_postmortem",
 			content: "Postmortem notes for gRPC Connect backend reliability incident, timeout tuning, and retry budgets.",
@@ -98,99 +193,109 @@ func TestSearchMemosSemanticPostgresLiveOpenAI(t *testing.T) {
 			content: "Cycling training plan with threshold intervals, cadence drills, and recovery day nutrition.",
 		},
 	}
-
-	memoNameByKey, memoContentByName := make(map[string]string, len(memoSeeds)), make(map[string]string, len(memoSeeds))
-	memoIDs := make([]int32, 0, len(memoSeeds))
-	for _, seed := range memoSeeds {
-		memo, createErr := ts.Service.CreateMemo(userCtx, &v1pb.CreateMemoRequest{
-			Memo: &v1pb.Memo{
-				Content:    seed.content,
-				Visibility: v1pb.Visibility_PRIVATE,
-			},
-		})
-		require.NoErrorf(t, createErr, "failed to create memo seed %q", seed.key)
-
-		memoNameByKey[seed.key] = memo.Name
-		memoContentByName[memo.Name] = seed.content
-
-		uid := strings.TrimPrefix(memo.Name, "memos/")
-		storeMemo, getErr := ts.Store.GetMemo(ctx, &store.FindMemo{UID: &uid})
-		require.NoErrorf(t, getErr, "failed to query store memo for seed %q", seed.key)
-		require.NotNil(t, storeMemo)
-		memoIDs = append(memoIDs, storeMemo.ID)
+	if !extended {
+		return seeds
 	}
+	return appendGeneratedLiveSemanticMemoSeeds(seeds, liveSemanticExtendedMemoSize)
+}
 
-	waitTimeout := 2*time.Minute + time.Duration(len(memoSeeds))*4*time.Second
-	require.NoError(t, waitForMemoEmbeddingReady(ctx, ts.Store, memoIDs, waitTimeout))
-
-	scenarios := []liveSemanticQueryScenario{
+func buildLiveSemanticQueryScenarios(extended bool) []liveSemanticQueryScenario {
+	topN, pageSize := 5, 10
+	if extended {
+		topN, pageSize = 8, 16
+	}
+	return []liveSemanticQueryScenario{
 		{
 			name:         "backend reliability query",
 			query:        "grpc connect backend reliability observability runbook",
 			expectedKeys: []string{"backend_postmortem", "backend_observability", "backend_runbook"},
-			topN:         5,
+			topN:         topN,
+			pageSize:     pageSize,
 		},
 		{
 			name:         "recipe query",
 			query:        "sourdough starter fermentation oven steam recipe",
 			expectedKeys: []string{"recipe_sourdough"},
-			topN:         5,
+			topN:         topN,
+			pageSize:     pageSize,
 		},
 		{
 			name:         "hiking query",
 			query:        "mountain hiking trail altitude backpack checklist",
 			expectedKeys: []string{"hiking_plan", "hiking_gear"},
-			topN:         5,
+			topN:         topN,
+			pageSize:     pageSize,
+		},
+		{
+			name:         "distributed systems query",
+			query:        "distributed systems consensus protocol failure-domain isolation notes",
+			expectedKeys: []string{"reading_notes"},
+			topN:         topN,
+			pageSize:     pageSize,
+		},
+	}
+}
+
+func appendGeneratedLiveSemanticMemoSeeds(base []liveSemanticMemoSeed, targetCount int) []liveSemanticMemoSeed {
+	if len(base) >= targetCount {
+		return base
+	}
+
+	generatedTopics := []struct {
+		keyPrefix string
+		content   string
+	}{
+		{
+			keyPrefix: "tea_brewing",
+			content:   "Tea brewing journal entry %d with gongfu steep timeline, water mineral profile, and aroma notes.",
+		},
+		{
+			keyPrefix: "pottery_class",
+			content:   "Pottery class checklist %d covering wheel centering drills, clay trimming, and glaze firing schedule.",
+		},
+		{
+			keyPrefix: "astronomy_log",
+			content:   "Astronomy observation log %d with telescope alignment, moon phase, and star chart references.",
+		},
+		{
+			keyPrefix: "language_drill",
+			content:   "Language practice session %d with shadowing exercises, vocabulary recall, and listening comprehension.",
+		},
+		{
+			keyPrefix: "cleaning_plan",
+			content:   "Home cleaning rotation %d for kitchen degreasing, bathroom descaling, and storage reorganization.",
+		},
+		{
+			keyPrefix: "piano_routine",
+			content:   "Piano routine %d focused on scales, arpeggio tempo control, and phrasing refinement.",
+		},
+		{
+			keyPrefix: "photo_walk",
+			content:   "Film photography walk %d with aperture settings, metering practice, and composition notes.",
+		},
+		{
+			keyPrefix: "bird_watch",
+			content:   "Birdwatch checklist %d documenting migration timing, binocular setup, and habitat notes.",
 		},
 	}
 
-	for _, scenario := range scenarios {
-		startedAt := time.Now()
-		response, searchErr := ts.Service.SearchMemosSemantic(userCtx, &v1pb.SearchMemosSemanticRequest{
-			Query:    scenario.query,
-			PageSize: 10,
+	seeds := append([]liveSemanticMemoSeed(nil), base...)
+	for index := len(base); index < targetCount; index++ {
+		topic := generatedTopics[index%len(generatedTopics)]
+		seedNumber := index - len(base) + 1
+		seeds = append(seeds, liveSemanticMemoSeed{
+			key:     fmt.Sprintf("%s_%02d", topic.keyPrefix, seedNumber),
+			content: fmt.Sprintf(topic.content, seedNumber),
 		})
-		require.NoErrorf(t, searchErr, "live semantic query failed for scenario %q", scenario.name)
-		require.NotEmptyf(t, response.Memos, "empty semantic result for scenario %q", scenario.name)
-
-		topN := scenario.topN
-		if topN <= 0 || topN > len(response.Memos) {
-			topN = len(response.Memos)
-		}
-
-		resultSummary := make([]string, 0, topN)
-		topResultNames := make([]string, 0, topN)
-		for index, memo := range response.Memos[:topN] {
-			topResultNames = append(topResultNames, memo.Name)
-			resultSummary = append(resultSummary, fmt.Sprintf("%d)%s => %s", index+1, memo.Name, memoContentByName[memo.Name]))
-		}
-
-		t.Logf(
-			"[live-semantic] scenario=%q query=%q latency=%s top%d=%s",
-			scenario.name,
-			scenario.query,
-			time.Since(startedAt).Round(time.Millisecond),
-			topN,
-			strings.Join(resultSummary, " | "),
-		)
-
-		matched := false
-		for _, expectedKey := range scenario.expectedKeys {
-			if slices.Contains(topResultNames, memoNameByKey[expectedKey]) {
-				matched = true
-				break
-			}
-		}
-		require.Truef(
-			t,
-			matched,
-			"expected one of %v to appear in top %d for scenario %q, got %v",
-			scenario.expectedKeys,
-			topN,
-			scenario.name,
-			topResultNames,
-		)
 	}
+	return seeds
+}
+
+func liveSemanticModeLabel(extended bool) string {
+	if extended {
+		return "extended"
+	}
+	return "smoke"
 }
 
 func waitForMemoEmbeddingReady(ctx context.Context, st *store.Store, memoIDs []int32, timeout time.Duration) error {
