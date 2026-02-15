@@ -1,5 +1,6 @@
-import { SearchIcon } from "lucide-react";
+import { SearchIcon, SparklesIcon, TypeIcon } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { useMemoFilterContext } from "@/contexts/MemoFilterContext";
 import { cn } from "@/lib/utils";
 import { useTranslate } from "@/utils/i18n";
@@ -61,48 +62,64 @@ const SearchBar = () => {
     }
   };
 
+  const modeButtonClass = (mode: SearchMode) =>
+    cn(
+      "h-6 w-6 rounded border flex items-center justify-center transition-colors",
+      searchMode === mode
+        ? "text-primary bg-primary/10 border-primary/20"
+        : "text-sidebar-foreground border-transparent opacity-40 hover:opacity-80 hover:bg-sidebar-accent hover:text-sidebar-accent-foreground",
+    );
+
   return (
-    <div className="relative w-full h-auto flex flex-row justify-start items-center">
-      <SearchIcon className="absolute left-2 w-4 h-auto opacity-40 text-sidebar-foreground" />
-      <div className="absolute right-8 top-2 flex flex-row items-center gap-1">
-        <button
+    <div className="w-full h-auto flex flex-row items-center gap-1">
+      <div className="relative w-full">
+        <SearchIcon className="absolute left-2 top-1/2 -translate-y-1/2 w-4 h-auto opacity-40 text-sidebar-foreground" />
+        <input
           className={cn(
-            "h-5 px-1.5 rounded border text-[10px] leading-none",
-            searchMode === "keyword"
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-sidebar text-sidebar-foreground/70 border-border hover:text-sidebar-foreground",
+            "w-full text-sidebar-foreground leading-6 bg-sidebar border border-border text-sm rounded-lg p-1 pl-8 pr-2 outline-0",
           )}
-          onClick={() => handleSearchModeChange("keyword")}
-          aria-label={t("memo.search-mode-keyword")}
-          type="button"
-        >
-          {t("memo.search-mode-keyword")}
-        </button>
-        <button
-          className={cn(
-            "h-5 px-1.5 rounded border text-[10px] leading-none",
-            searchMode === "semantic"
-              ? "bg-primary text-primary-foreground border-primary"
-              : "bg-sidebar text-sidebar-foreground/70 border-border hover:text-sidebar-foreground",
-          )}
-          onClick={() => handleSearchModeChange("semantic")}
-          aria-label={t("memo.search-mode-semantic")}
-          type="button"
-        >
-          {t("memo.search-mode-semantic")}
-        </button>
+          placeholder={t("memo.search-placeholder")}
+          value={queryText}
+          onChange={onTextChange}
+          onKeyDown={onKeyDown}
+          ref={inputRef}
+        />
       </div>
-      <input
-        className={cn(
-          "w-full text-sidebar-foreground leading-6 bg-sidebar border border-border text-sm rounded-lg p-1 pl-8 pr-32 outline-0",
-        )}
-        placeholder={t("memo.search-placeholder")}
-        value={queryText}
-        onChange={onTextChange}
-        onKeyDown={onKeyDown}
-        ref={inputRef}
-      />
-      <MemoDisplaySettingMenu className="absolute right-2 top-2 text-sidebar-foreground" />
+      <div className="shrink-0 flex flex-row items-center gap-1">
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className={modeButtonClass("keyword")}
+              onClick={() => handleSearchModeChange("keyword")}
+              aria-label={t("memo.search-mode-keyword")}
+              type="button"
+            >
+              <TypeIcon className="w-3.5 h-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{t("memo.search-mode-keyword")}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <button
+              className={modeButtonClass("semantic")}
+              onClick={() => handleSearchModeChange("semantic")}
+              aria-label={t("memo.search-mode-semantic")}
+              type="button"
+            >
+              <SparklesIcon className="w-3.5 h-3.5 shrink-0" />
+            </button>
+          </TooltipTrigger>
+          <TooltipContent side="top">
+            <p>{t("memo.search-mode-semantic")}</p>
+          </TooltipContent>
+        </Tooltip>
+
+        <MemoDisplaySettingMenu className="h-6 w-6 rounded flex items-center justify-center text-sidebar-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground hover:opacity-80" />
+      </div>
     </div>
   );
 };
