@@ -1,7 +1,7 @@
 import { timestampDate } from "@bufbuild/protobuf/wkt";
 import { Code, ConnectError, createClient, type Interceptor } from "@connectrpc/connect";
 import { createConnectTransport } from "@connectrpc/connect-web";
-import { getAccessToken, setAccessToken } from "./auth-state";
+import { getAccessToken, isTokenExpired, setAccessToken } from "./auth-state";
 import { ActivityService } from "./types/proto/api/v1/activity_service_pb";
 import { AttachmentService } from "./types/proto/api/v1/attachment_service_pb";
 import { AuthService } from "./types/proto/api/v1/auth_service_pb";
@@ -18,6 +18,7 @@ import { redirectOnAuthFailure } from "./utils/auth-redirect";
 
 const RETRY_HEADER = "X-Retry";
 const RETRY_HEADER_VALUE = "true";
+const PROACTIVE_REFRESH_BUFFER_MS = 2 * 60 * 1000;
 
 // ============================================================================
 // Token Refresh State Management
@@ -86,12 +87,39 @@ export async function refreshAccessToken(): Promise<void> {
   return tokenRefreshManager.refresh(doRefreshAccessToken);
 }
 
+async function getValidAccessToken(): Promise<string | null> {
+  const token = getAccessToken();
+  if (!token) {
+    return null;
+  }
+
+  // Proactively refresh before requests so public endpoints don't silently fall
+  // back to anonymous mode when the access token has expired.
+  if (!isTokenExpired(PROACTIVE_REFRESH_BUFFER_MS)) {
+    return token;
+  }
+
+  try {
+    await refreshAccessToken();
+    const refreshedToken = getAccessToken();
+    if (refreshedToken) {
+      return refreshedToken;
+    }
+  } catch (error) {
+    console.error("[authInterceptor] Proactive token refresh failed, fallback to current token:", error);
+  }
+
+  // Keep the current token as fallback. If it is already invalid, the 401 path
+  // below will run reactive refresh + redirect handling.
+  return token;
+}
+
 // ============================================================================
 // Authentication Interceptor
 // ============================================================================
 
 const authInterceptor: Interceptor = (next) => async (req) => {
-  const token = getAccessToken();
+  const token = await getValidAccessToken();
   if (token) {
     req.header.set("Authorization", `Bearer ${token}`);
   }

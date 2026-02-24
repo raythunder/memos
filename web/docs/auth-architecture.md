@@ -4,6 +4,19 @@
 
 The application uses **AuthContext** for authentication state management, not React Query's `useCurrentUserQuery`. This is an intentional architectural decision.
 
+## Access Token Refresh Strategy
+
+Client requests use a two-layer refresh strategy in `web/src/connect.ts`:
+
+1. **Proactive refresh before requests**
+- If an access token exists and is expiring soon, the interceptor refreshes it before sending the request.
+- This is important for public APIs like `MemoService/ListMemos`: when an expired token is sent, the backend may treat it as anonymous access instead of returning `401`.
+- Proactive refresh prevents private/home memo lists from silently degrading to anonymous results after tab focus changes.
+
+2. **Reactive refresh on `401 Unauthenticated`**
+- If a protected API returns `401`, the interceptor refreshes and retries once.
+- Concurrent refresh calls are deduplicated by a shared refresh manager to avoid refresh-token rotation races.
+
 ### Why AuthContext Instead of React Query?
 
 #### 1. **Synchronous Initialization**
