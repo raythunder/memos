@@ -94,7 +94,7 @@ const AISettings = () => {
       <SettingGroup title={t("setting.ai-section.title")}>
         <SettingRow label={t("setting.ai-section.base-url")}>
           <Input
-            className="w-80"
+            className="w-full sm:w-80"
             placeholder="https://api.openai.com/v1"
             value={aiSetting.openaiBaseUrl}
             onChange={(event) => updatePartialSetting({ openaiBaseUrl: event.target.value })}
@@ -103,7 +103,7 @@ const AISettings = () => {
 
         <SettingRow label={t("setting.ai-section.model")}>
           <Input
-            className="w-80"
+            className="w-full sm:w-80"
             placeholder="text-embedding-3-small"
             value={aiSetting.openaiEmbeddingModel}
             onChange={(event) => updatePartialSetting({ openaiEmbeddingModel: event.target.value })}
@@ -112,7 +112,7 @@ const AISettings = () => {
 
         <SettingRow label={t("setting.ai-section.max-retry")} description={t("setting.ai-section.max-retry-description")}>
           <Input
-            className="w-80"
+            className="w-full sm:w-80"
             type="number"
             min="0"
             placeholder="2"
@@ -127,7 +127,7 @@ const AISettings = () => {
 
         <SettingRow label={t("setting.ai-section.retry-backoff-ms")} description={t("setting.ai-section.retry-backoff-ms-description")}>
           <Input
-            className="w-80"
+            className="w-full sm:w-80"
             type="number"
             min="0"
             placeholder="100"
@@ -145,7 +145,7 @@ const AISettings = () => {
           description={t("setting.ai-section.embedding-concurrency-description")}
         >
           <Input
-            className="w-80"
+            className="w-full sm:w-80"
             type="number"
             min="0"
             placeholder="8"
@@ -163,7 +163,7 @@ const AISettings = () => {
           description={aiSetting.openaiApiKeySet ? t("setting.ai-section.api-key-stored") : t("setting.ai-section.api-key-missing")}
         >
           <Input
-            className="w-80"
+            className="w-full sm:w-80"
             type="password"
             placeholder="sk-..."
             value={aiSetting.openaiApiKey}
