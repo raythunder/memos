@@ -47,6 +47,14 @@ func (s *Store) GetDriver() Driver {
 	return s.driver
 }
 
+// DriverName returns the configured database driver name.
+func (s *Store) DriverName() string {
+	if s.profile == nil {
+		return ""
+	}
+	return s.profile.Driver
+}
+
 func (s *Store) Close() error {
 	// Stop all cache cleanup goroutines
 	s.instanceSettingCache.Close()

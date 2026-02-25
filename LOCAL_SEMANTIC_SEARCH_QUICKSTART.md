@@ -38,6 +38,24 @@ go run ./cmd/memos --port 8081
 
 预期：日志包含 `Database driver: postgres`。
 
+### 3.1 使用 Supabase Postgres（可选）
+
+如果你希望后端直接连接 Supabase（Session Pooler）：
+
+```bash
+MEMOS_DATA="$(pwd)/.tmp/memos-dev" \
+MEMOS_DRIVER=postgres \
+MEMOS_DSN="postgres://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require" \
+MEMOS_SUPABASE_PROJECT_URL="https://<project-ref>.supabase.co" \
+go run ./cmd/memos --port 8081
+```
+
+说明：
+
+- 建议使用 Session Pooler `5432`。
+- 连接串需要 `sslmode=require`。
+- 当前为后端直连数据库模式，项目创建时不需要启用 automatic RLS。
+
 ## 4. 启动前端（新终端）
 
 ```bash

@@ -103,7 +103,7 @@ function PasswordSignInForm() {
         </div>
       </div>
       <div className="flex flex-row justify-end items-center w-full mt-6">
-        <Button type="submit" className="w-full h-10" disabled={actionBtnLoadingState.isLoading} onClick={handleSignInButtonClick}>
+        <Button type="submit" className="w-full h-10" disabled={actionBtnLoadingState.isLoading}>
           {t("common.sign-in")}
           {actionBtnLoadingState.isLoading && <LoaderIcon className="w-5 h-auto ml-2 animate-spin opacity-60" />}
         </Button>

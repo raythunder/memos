@@ -170,4 +170,28 @@ func TestCreateUserRegistration(t *testing.T) {
 		require.NotNil(t, createdUser)
 		require.Equal(t, apiv1.User_USER, createdUser.Role, "Unauthenticated users can only create USER role")
 	})
+
+	t.Run("CreateUser duplicate username returns already exists", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		_, err := ts.Service.CreateUser(ctx, &apiv1.CreateUserRequest{
+			User: &apiv1.User{
+				Username: "dupuser",
+				Email:    "dupuser@example.com",
+				Password: "password123",
+			},
+		})
+		require.NoError(t, err)
+
+		_, err = ts.Service.CreateUser(ctx, &apiv1.CreateUserRequest{
+			User: &apiv1.User{
+				Username: "dupuser",
+				Email:    "dupuser2@example.com",
+				Password: "password123",
+			},
+		})
+		require.Error(t, err)
+		require.Contains(t, err.Error(), "AlreadyExists")
+	})
 }

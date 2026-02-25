@@ -84,6 +84,24 @@ Don't want to install yet? Try our [live demo](https://demo.usememos.com/) first
 
 See our [installation guide](https://usememos.com/docs/deploy) for detailed instructions.
 
+## Supabase Backend (Hybrid Auth)
+
+Memos can run on Supabase-managed PostgreSQL while preserving the existing Memos sign-in flow.
+
+```bash
+MEMOS_DRIVER=postgres \
+MEMOS_DSN="postgres://postgres.<project-ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres?sslmode=require" \
+MEMOS_SUPABASE_PROJECT_URL="https://<project-ref>.supabase.co" \
+go run ./cmd/memos --port 8081
+```
+
+Notes:
+
+- Use Supabase **Session Pooler** (`5432`).
+- Keep `sslmode=require`.
+- For backend-direct database access, keep automatic RLS disabled.
+- Full migration and validation checklist: `docs/supabase-backend-auth-migration.md`.
+
 ## Contributing
 
 Contributions are welcome — bug reports, feature suggestions, pull requests, documentation, and translations.

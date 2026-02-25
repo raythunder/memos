@@ -172,6 +172,12 @@ func (s *APIV1Service) CreateUser(ctx context.Context, request *v1pb.CreateUserR
 		PasswordHash: string(passwordHash),
 	})
 	if err != nil {
+		errMsg := strings.ToLower(err.Error())
+		if strings.Contains(errMsg, "duplicate key") ||
+			strings.Contains(errMsg, "unique constraint") ||
+			strings.Contains(errMsg, "duplicate entry") {
+			return nil, status.Errorf(codes.AlreadyExists, "user %q already exists", request.User.Username)
+		}
 		return nil, status.Errorf(codes.Internal, "failed to create user: %v", err)
 	}
 

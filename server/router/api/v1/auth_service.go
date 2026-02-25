@@ -164,7 +164,16 @@ func (s *APIV1Service) SignIn(ctx context.Context, request *v1pb.SignInRequest) 
 			userCreate.PasswordHash = string(passwordHash)
 			user, err = s.Store.CreateUser(ctx, userCreate)
 			if err != nil {
-				return nil, status.Errorf(codes.Internal, "failed to create user, error: %v", err)
+				// SSO callbacks can race (e.g. duplicate callback or concurrent requests).
+				// If create fails but user now exists, reuse it as idempotent sign-in.
+				existing, lookupErr := s.Store.GetUser(ctx, &store.FindUser{
+					Username: &userInfo.Identifier,
+				})
+				if lookupErr == nil && existing != nil {
+					user = existing
+				} else {
+					return nil, status.Errorf(codes.Internal, "failed to create user, error: %v", err)
+				}
 			}
 		}
 		existingUser = user

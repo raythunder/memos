@@ -534,28 +534,18 @@ func (s *FileServerService) getCurrentUser(ctx context.Context, c *echo.Context)
 
 // authenticateByBearerToken authenticates using Authorization header.
 func (s *FileServerService) authenticateByBearerToken(ctx context.Context, authHeader string) (*store.User, error) {
-	token := auth.ExtractBearerToken(authHeader)
-	if token == "" {
+	result := s.authenticator.Authenticate(ctx, authHeader)
+	if result == nil {
 		return nil, nil
 	}
 
-	// Try Access Token V2 (stateless JWT).
-	if !strings.HasPrefix(token, auth.PersonalAccessTokenPrefix) {
-		claims, err := s.authenticator.AuthenticateByAccessTokenV2(token)
-		if err == nil && claims != nil {
-			return s.Store.GetUser(ctx, &store.FindUser{ID: &claims.UserID})
-		}
+	if result.User != nil {
+		return result.User, nil
 	}
-
-	// Try Personal Access Token (stateful).
-	if strings.HasPrefix(token, auth.PersonalAccessTokenPrefix) {
-		user, _, err := s.authenticator.AuthenticateByPAT(ctx, token)
-		if err == nil {
-			return user, nil
-		}
+	if result.Claims == nil {
+		return nil, nil
 	}
-
-	return nil, nil
+	return s.Store.GetUser(ctx, &store.FindUser{ID: &result.Claims.UserID})
 }
 
 // authenticateByRefreshToken authenticates using refresh token cookie.
