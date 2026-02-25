@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"os"
 	"strconv"
 	"strings"
@@ -27,7 +28,13 @@ const (
 	openAIEmbeddingMaxRetry     = 2
 	openAIEmbeddingBackoff      = 100 * time.Millisecond
 	openAIEmbeddingBodyLimit    = 2 << 20
+	jinaHostSuffix              = "jina.ai"
+	jinaModelPrefix             = "jina-"
+	embeddingTaskQuery          = "retrieval.query"
+	embeddingTaskPassage        = "retrieval.passage"
 )
+
+type embeddingTaskContextKey struct{}
 
 // SemanticEmbeddingClient abstracts semantic embedding generation.
 // It allows test injection without external API dependency.
@@ -117,7 +124,7 @@ func (s *APIV1Service) getOpenAIEmbeddingConfig(ctx context.Context) (*openAIEmb
 
 	config := &openAIEmbeddingConfig{
 		baseURL:   strings.TrimSpace(aiSetting.GetOpenaiBaseUrl()),
-		model:     strings.TrimSpace(aiSetting.GetOpenaiEmbeddingModel()),
+		model:     firstNonEmptyModel(strings.TrimSpace(aiSetting.GetOpenaiEmbeddingModel()), aiSetting.GetOpenaiEmbeddingModels()),
 		maxRetry:  aiSetting.GetOpenaiEmbeddingMaxRetry(),
 		backoffMs: aiSetting.GetOpenaiEmbeddingRetryBackoffMs(),
 	}
@@ -151,11 +158,15 @@ func (c *openAIEmbeddingClient) Embed(ctx context.Context, text string) ([]float
 	}
 
 	requestBody := struct {
-		Model string `json:"model"`
-		Input string `json:"input"`
+		Model string   `json:"model"`
+		Input []string `json:"input"`
+		Task  string   `json:"task,omitempty"`
 	}{
 		Model: c.model,
-		Input: text,
+		Input: []string{text},
+	}
+	if task := resolveEmbeddingTask(ctx, c.baseURL, c.model); task != "" {
+		requestBody.Task = task
 	}
 	body, err := json.Marshal(requestBody)
 	if err != nil {
@@ -291,4 +302,42 @@ func parseOpenAIEmbeddingRetryBackoffFromSetting(value int32) time.Duration {
 		return 0
 	}
 	return time.Duration(value) * time.Millisecond
+}
+
+func withEmbeddingTask(ctx context.Context, task string) context.Context {
+	return context.WithValue(ctx, embeddingTaskContextKey{}, task)
+}
+
+func resolveEmbeddingTask(ctx context.Context, baseURL, model string) string {
+	if !isJinaCompatibleProvider(baseURL, model) {
+		return ""
+	}
+	if raw := ctx.Value(embeddingTaskContextKey{}); raw != nil {
+		if value, ok := raw.(string); ok {
+			if trimmed := strings.TrimSpace(value); trimmed != "" {
+				return trimmed
+			}
+		}
+	}
+	return embeddingTaskPassage
+}
+
+func isJinaCompatibleProvider(baseURL, model string) bool {
+	parsedURL, err := url.Parse(strings.TrimSpace(baseURL))
+	if err == nil && strings.HasSuffix(strings.ToLower(parsedURL.Hostname()), jinaHostSuffix) {
+		return true
+	}
+	return strings.HasPrefix(strings.ToLower(strings.TrimSpace(model)), jinaModelPrefix)
+}
+
+func firstNonEmptyModel(primary string, candidates []string) string {
+	if strings.TrimSpace(primary) != "" {
+		return strings.TrimSpace(primary)
+	}
+	for _, candidate := range candidates {
+		if trimmed := strings.TrimSpace(candidate); trimmed != "" {
+			return trimmed
+		}
+	}
+	return ""
 }

@@ -306,13 +306,22 @@ func convertInstanceAISettingFromStore(setting *storepb.InstanceAISetting) *v1pb
 	if setting == nil {
 		return nil
 	}
+	models, selectedModel := normalizeEmbeddingModels(setting.OpenaiEmbeddingModels, setting.OpenaiEmbeddingModel)
 	return &v1pb.InstanceSetting_AISetting{
 		OpenaiBaseUrl:                 setting.OpenaiBaseUrl,
-		OpenaiEmbeddingModel:          setting.OpenaiEmbeddingModel,
+		OpenaiEmbeddingModel:          selectedModel,
+		OpenaiEmbeddingModels:         models,
 		OpenaiApiKeySet:               setting.OpenaiApiKeyEncrypted != "",
 		OpenaiEmbeddingMaxRetry:       setting.OpenaiEmbeddingMaxRetry,
 		OpenaiEmbeddingRetryBackoffMs: setting.OpenaiEmbeddingRetryBackoffMs,
 		SemanticEmbeddingConcurrency:  setting.SemanticEmbeddingConcurrency,
+		SemanticReindexRunning:        setting.SemanticReindexRunning,
+		SemanticReindexTotal:          setting.SemanticReindexTotal,
+		SemanticReindexProcessed:      setting.SemanticReindexProcessed,
+		SemanticReindexFailed:         setting.SemanticReindexFailed,
+		SemanticReindexStartedTs:      setting.SemanticReindexStartedTs,
+		SemanticReindexUpdatedTs:      setting.SemanticReindexUpdatedTs,
+		SemanticReindexModel:          setting.SemanticReindexModel,
 	}
 }
 
@@ -320,12 +329,21 @@ func convertInstanceAISettingToStore(setting *v1pb.InstanceSetting_AISetting) *s
 	if setting == nil {
 		return nil
 	}
+	models, selectedModel := normalizeEmbeddingModels(setting.OpenaiEmbeddingModels, setting.OpenaiEmbeddingModel)
 	return &storepb.InstanceAISetting{
 		OpenaiBaseUrl:                 setting.OpenaiBaseUrl,
-		OpenaiEmbeddingModel:          setting.OpenaiEmbeddingModel,
+		OpenaiEmbeddingModel:          selectedModel,
+		OpenaiEmbeddingModels:         models,
 		OpenaiEmbeddingMaxRetry:       setting.OpenaiEmbeddingMaxRetry,
 		OpenaiEmbeddingRetryBackoffMs: setting.OpenaiEmbeddingRetryBackoffMs,
 		SemanticEmbeddingConcurrency:  setting.SemanticEmbeddingConcurrency,
+		SemanticReindexRunning:        setting.SemanticReindexRunning,
+		SemanticReindexTotal:          setting.SemanticReindexTotal,
+		SemanticReindexProcessed:      setting.SemanticReindexProcessed,
+		SemanticReindexFailed:         setting.SemanticReindexFailed,
+		SemanticReindexStartedTs:      setting.SemanticReindexStartedTs,
+		SemanticReindexUpdatedTs:      setting.SemanticReindexUpdatedTs,
+		SemanticReindexModel:          setting.SemanticReindexModel,
 	}
 }
 
@@ -338,13 +356,22 @@ func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1p
 	updatedSetting := &storepb.InstanceAISetting{}
 	if existingSetting != nil {
 		updatedSetting.OpenaiApiKeyEncrypted = existingSetting.OpenaiApiKeyEncrypted
+		updatedSetting.SemanticReindexRunning = existingSetting.SemanticReindexRunning
+		updatedSetting.SemanticReindexTotal = existingSetting.SemanticReindexTotal
+		updatedSetting.SemanticReindexProcessed = existingSetting.SemanticReindexProcessed
+		updatedSetting.SemanticReindexFailed = existingSetting.SemanticReindexFailed
+		updatedSetting.SemanticReindexStartedTs = existingSetting.SemanticReindexStartedTs
+		updatedSetting.SemanticReindexUpdatedTs = existingSetting.SemanticReindexUpdatedTs
+		updatedSetting.SemanticReindexModel = existingSetting.SemanticReindexModel
 	}
 	if setting != nil {
 		if err := validateInstanceAISetting(setting); err != nil {
 			return nil, err
 		}
+		models, selectedModel := normalizeEmbeddingModels(setting.OpenaiEmbeddingModels, setting.OpenaiEmbeddingModel)
 		updatedSetting.OpenaiBaseUrl = strings.TrimSpace(setting.OpenaiBaseUrl)
-		updatedSetting.OpenaiEmbeddingModel = strings.TrimSpace(setting.OpenaiEmbeddingModel)
+		updatedSetting.OpenaiEmbeddingModel = selectedModel
+		updatedSetting.OpenaiEmbeddingModels = models
 		updatedSetting.OpenaiEmbeddingMaxRetry = setting.OpenaiEmbeddingMaxRetry
 		updatedSetting.OpenaiEmbeddingRetryBackoffMs = setting.OpenaiEmbeddingRetryBackoffMs
 		updatedSetting.SemanticEmbeddingConcurrency = setting.SemanticEmbeddingConcurrency
@@ -370,6 +397,12 @@ func (s *APIV1Service) upsertInstanceAISetting(ctx context.Context, setting *v1p
 
 	// Apply updated embedding concurrency immediately for subsequent async sync jobs.
 	s.setEmbeddingSemaphoreLimit(resolveEmbeddingRefreshConcurrencyWithSetting(updatedSetting.SemanticEmbeddingConcurrency))
+
+	if setting != nil && setting.TriggerSemanticReindex {
+		if err := s.startSemanticReindexTask(ctx); err != nil {
+			return nil, err
+		}
+	}
 	return instanceSetting, nil
 }
 
@@ -388,6 +421,34 @@ func validateInstanceAISetting(setting *v1pb.InstanceSetting_AISetting) error {
 		return status.Errorf(codes.InvalidArgument, "semantic_embedding_concurrency must be non-negative")
 	}
 	return nil
+}
+
+func normalizeEmbeddingModels(rawModels []string, selectedModel string) ([]string, string) {
+	seen := make(map[string]struct{}, len(rawModels)+1)
+	models := make([]string, 0, len(rawModels)+1)
+
+	appendModel := func(value string) {
+		trimmed := strings.TrimSpace(value)
+		if trimmed == "" {
+			return
+		}
+		if _, ok := seen[trimmed]; ok {
+			return
+		}
+		seen[trimmed] = struct{}{}
+		models = append(models, trimmed)
+	}
+
+	appendModel(selectedModel)
+	for _, model := range rawModels {
+		appendModel(model)
+	}
+
+	finalSelected := strings.TrimSpace(selectedModel)
+	if finalSelected == "" && len(models) > 0 {
+		finalSelected = models[0]
+	}
+	return models, finalSelected
 }
 
 func (s *APIV1Service) GetInstanceAdmin(ctx context.Context) (*v1pb.User, error) {

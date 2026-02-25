@@ -3,12 +3,14 @@ package test
 import (
 	"context"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
 	v1pb "github.com/usememos/memos/proto/gen/api/v1"
+	apiv1 "github.com/usememos/memos/server/router/api/v1"
 )
 
 func TestGetInstanceProfile(t *testing.T) {
@@ -256,6 +258,7 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 					AiSetting: &v1pb.InstanceSetting_AISetting{
 						OpenaiBaseUrl:                 "https://api.openai.com/v1",
 						OpenaiEmbeddingModel:          "text-embedding-3-small",
+						OpenaiEmbeddingModels:         []string{"text-embedding-3-small", "jina-embeddings-v4"},
 						OpenaiApiKey:                  "sk-test-secret",
 						OpenaiEmbeddingMaxRetry:       3,
 						OpenaiEmbeddingRetryBackoffMs: 150,
@@ -278,6 +281,7 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 		require.Equal(t, int32(3), aiSetting.GetOpenaiEmbeddingMaxRetry())
 		require.Equal(t, int32(150), aiSetting.GetOpenaiEmbeddingRetryBackoffMs())
 		require.Equal(t, int32(10), aiSetting.GetSemanticEmbeddingConcurrency())
+		require.Equal(t, []string{"text-embedding-3-small", "jina-embeddings-v4"}, aiSetting.GetOpenaiEmbeddingModels())
 
 		// Updating base/model without api key should keep stored ciphertext.
 		prevCipherText := aiSetting.GetOpenaiApiKeyEncrypted()
@@ -293,6 +297,7 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 		require.Equal(t, int32(3), aiSetting.GetOpenaiEmbeddingMaxRetry())
 		require.Equal(t, int32(150), aiSetting.GetOpenaiEmbeddingRetryBackoffMs())
 		require.Equal(t, int32(10), aiSetting.GetSemanticEmbeddingConcurrency())
+		require.Equal(t, []string{"text-embedding-3-large", "text-embedding-3-small", "jina-embeddings-v4"}, aiSetting.GetOpenaiEmbeddingModels())
 
 		// Clearing api key should remove ciphertext.
 		updateReq.Setting.GetAiSetting().ClearOpenaiApiKey = true
@@ -318,5 +323,57 @@ func TestUpdateInstanceAISetting(t *testing.T) {
 		require.Equal(t, int32(3), aiSetting.GetOpenaiEmbeddingMaxRetry())
 		require.Equal(t, int32(150), aiSetting.GetOpenaiEmbeddingRetryBackoffMs())
 		require.Equal(t, int32(10), aiSetting.GetSemanticEmbeddingConcurrency())
+	})
+
+	t.Run("Trigger semantic reindex persists progress state", func(t *testing.T) {
+		ts := NewTestService(t)
+		defer ts.Cleanup()
+
+		hostUser, err := ts.CreateHostUser(ctx, "reindex-admin")
+		require.NoError(t, err)
+		userCtx := ts.CreateUserContext(ctx, hostUser.ID)
+
+		// Semantic reindex requires postgres profile. Use a fake embedding client
+		// to avoid external dependencies during tests.
+		ts.Service.Profile.Driver = "postgres"
+		ts.Service.EmbeddingClientFactory = func(context.Context) (apiv1.SemanticEmbeddingClient, error) {
+			return &fakeSemanticEmbeddingClient{
+				model: "jina-embeddings-v4",
+			}, nil
+		}
+
+		updateReq := &v1pb.UpdateInstanceSettingRequest{
+			Setting: &v1pb.InstanceSetting{
+				Name: "instance/settings/AI",
+				Value: &v1pb.InstanceSetting_AiSetting{
+					AiSetting: &v1pb.InstanceSetting_AISetting{
+						OpenaiBaseUrl:            "https://api.jina.ai/v1",
+						OpenaiEmbeddingModel:     "jina-embeddings-v4",
+						TriggerSemanticReindex:   true,
+						OpenaiEmbeddingModels:    []string{"jina-embeddings-v4"},
+						SemanticReindexRunning:   false, // client writes should not control runtime state
+						SemanticReindexTotal:     0,
+						SemanticReindexProcessed: 0,
+					},
+				},
+			},
+		}
+		_, err = ts.Service.UpdateInstanceSetting(userCtx, updateReq)
+		require.NoError(t, err)
+
+		// Poll until background reindex updates state and finishes.
+		deadline := time.Now().Add(5 * time.Second)
+		for time.Now().Before(deadline) {
+			aiSetting, getErr := ts.Store.GetInstanceAISetting(ctx)
+			require.NoError(t, getErr)
+			if aiSetting.GetSemanticReindexStartedTs() > 0 && !aiSetting.GetSemanticReindexRunning() {
+				require.Equal(t, "jina-embeddings-v4", aiSetting.GetSemanticReindexModel())
+				require.Greater(t, aiSetting.GetSemanticReindexUpdatedTs(), int64(0))
+				return
+			}
+			time.Sleep(50 * time.Millisecond)
+		}
+
+		t.Fatal("semantic reindex state was not updated in time")
 	})
 }

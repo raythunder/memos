@@ -2228,6 +2228,40 @@ components:
                         semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
                          Value <= 0 means using backend default/fallback behavior.
                     format: int32
+                openaiEmbeddingModels:
+                    type: array
+                    items:
+                        type: string
+                    description: openai_embedding_models is the saved model list for quick switching.
+                semanticReindexRunning:
+                    type: boolean
+                    description: semantic_reindex_running indicates whether a background semantic reindex task is running.
+                semanticReindexTotal:
+                    type: integer
+                    description: semantic_reindex_total is the total memo count for current/last reindex task.
+                    format: int32
+                semanticReindexProcessed:
+                    type: integer
+                    description: semantic_reindex_processed is the processed memo count for current/last reindex task.
+                    format: int32
+                semanticReindexFailed:
+                    type: integer
+                    description: semantic_reindex_failed is the failed memo count for current/last reindex task.
+                    format: int32
+                semanticReindexStartedTs:
+                    type: string
+                    description: semantic_reindex_started_ts is the unix timestamp in seconds when current/last reindex started.
+                semanticReindexUpdatedTs:
+                    type: string
+                    description: semantic_reindex_updated_ts is the unix timestamp in seconds when progress last updated.
+                semanticReindexModel:
+                    type: string
+                    description: semantic_reindex_model is the model used by current/last reindex task.
+                triggerSemanticReindex:
+                    type: boolean
+                    description: |-
+                        trigger_semantic_reindex starts a background reindex task when set to true in update request.
+                         This field is write-only and is not persisted.
             description: AI configuration settings for semantic search.
         InstanceSetting_GeneralSetting:
             type: object

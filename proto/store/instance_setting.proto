@@ -120,4 +120,20 @@ message InstanceAISetting {
   int32 openai_embedding_retry_backoff_ms = 5;
   // semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
   int32 semantic_embedding_concurrency = 6;
+  // openai_embedding_models is the saved model list for quick switching.
+  repeated string openai_embedding_models = 7;
+  // semantic_reindex_running indicates whether a background semantic reindex task is running.
+  bool semantic_reindex_running = 8;
+  // semantic_reindex_total is the total memo count for current/last reindex task.
+  int32 semantic_reindex_total = 9;
+  // semantic_reindex_processed is the processed memo count for current/last reindex task.
+  int32 semantic_reindex_processed = 10;
+  // semantic_reindex_failed is the failed memo count for current/last reindex task.
+  int32 semantic_reindex_failed = 11;
+  // semantic_reindex_started_ts is the unix timestamp in seconds when current/last reindex started.
+  int64 semantic_reindex_started_ts = 12;
+  // semantic_reindex_updated_ts is the unix timestamp in seconds when progress last updated.
+  int64 semantic_reindex_updated_ts = 13;
+  // semantic_reindex_model is the model used by current/last reindex task.
+  string semantic_reindex_model = 14;
 }

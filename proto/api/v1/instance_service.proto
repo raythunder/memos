@@ -185,6 +185,25 @@ message InstanceSetting {
     // semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
     // Value <= 0 means using backend default/fallback behavior.
     int32 semantic_embedding_concurrency = 8;
+    // openai_embedding_models is the saved model list for quick switching.
+    repeated string openai_embedding_models = 9;
+    // semantic_reindex_running indicates whether a background semantic reindex task is running.
+    bool semantic_reindex_running = 10;
+    // semantic_reindex_total is the total memo count for current/last reindex task.
+    int32 semantic_reindex_total = 11;
+    // semantic_reindex_processed is the processed memo count for current/last reindex task.
+    int32 semantic_reindex_processed = 12;
+    // semantic_reindex_failed is the failed memo count for current/last reindex task.
+    int32 semantic_reindex_failed = 13;
+    // semantic_reindex_started_ts is the unix timestamp in seconds when current/last reindex started.
+    int64 semantic_reindex_started_ts = 14;
+    // semantic_reindex_updated_ts is the unix timestamp in seconds when progress last updated.
+    int64 semantic_reindex_updated_ts = 15;
+    // semantic_reindex_model is the model used by current/last reindex task.
+    string semantic_reindex_model = 16;
+    // trigger_semantic_reindex starts a background reindex task when set to true in update request.
+    // This field is write-only and is not persisted.
+    bool trigger_semantic_reindex = 17;
   }
 }
 

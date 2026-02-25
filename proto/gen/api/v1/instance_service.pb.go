@@ -767,8 +767,27 @@ type InstanceSetting_AISetting struct {
 	// semantic_embedding_concurrency controls concurrent async embedding refresh jobs.
 	// Value <= 0 means using backend default/fallback behavior.
 	SemanticEmbeddingConcurrency int32 `protobuf:"varint,8,opt,name=semantic_embedding_concurrency,json=semanticEmbeddingConcurrency,proto3" json:"semantic_embedding_concurrency,omitempty"`
-	unknownFields                protoimpl.UnknownFields
-	sizeCache                    protoimpl.SizeCache
+	// openai_embedding_models is the saved model list for quick switching.
+	OpenaiEmbeddingModels []string `protobuf:"bytes,9,rep,name=openai_embedding_models,json=openaiEmbeddingModels,proto3" json:"openai_embedding_models,omitempty"`
+	// semantic_reindex_running indicates whether a background semantic reindex task is running.
+	SemanticReindexRunning bool `protobuf:"varint,10,opt,name=semantic_reindex_running,json=semanticReindexRunning,proto3" json:"semantic_reindex_running,omitempty"`
+	// semantic_reindex_total is the total memo count for current/last reindex task.
+	SemanticReindexTotal int32 `protobuf:"varint,11,opt,name=semantic_reindex_total,json=semanticReindexTotal,proto3" json:"semantic_reindex_total,omitempty"`
+	// semantic_reindex_processed is the processed memo count for current/last reindex task.
+	SemanticReindexProcessed int32 `protobuf:"varint,12,opt,name=semantic_reindex_processed,json=semanticReindexProcessed,proto3" json:"semantic_reindex_processed,omitempty"`
+	// semantic_reindex_failed is the failed memo count for current/last reindex task.
+	SemanticReindexFailed int32 `protobuf:"varint,13,opt,name=semantic_reindex_failed,json=semanticReindexFailed,proto3" json:"semantic_reindex_failed,omitempty"`
+	// semantic_reindex_started_ts is the unix timestamp in seconds when current/last reindex started.
+	SemanticReindexStartedTs int64 `protobuf:"varint,14,opt,name=semantic_reindex_started_ts,json=semanticReindexStartedTs,proto3" json:"semantic_reindex_started_ts,omitempty"`
+	// semantic_reindex_updated_ts is the unix timestamp in seconds when progress last updated.
+	SemanticReindexUpdatedTs int64 `protobuf:"varint,15,opt,name=semantic_reindex_updated_ts,json=semanticReindexUpdatedTs,proto3" json:"semantic_reindex_updated_ts,omitempty"`
+	// semantic_reindex_model is the model used by current/last reindex task.
+	SemanticReindexModel string `protobuf:"bytes,16,opt,name=semantic_reindex_model,json=semanticReindexModel,proto3" json:"semantic_reindex_model,omitempty"`
+	// trigger_semantic_reindex starts a background reindex task when set to true in update request.
+	// This field is write-only and is not persisted.
+	TriggerSemanticReindex bool `protobuf:"varint,17,opt,name=trigger_semantic_reindex,json=triggerSemanticReindex,proto3" json:"trigger_semantic_reindex,omitempty"`
+	unknownFields          protoimpl.UnknownFields
+	sizeCache              protoimpl.SizeCache
 }
 
 func (x *InstanceSetting_AISetting) Reset() {
@@ -855,6 +874,69 @@ func (x *InstanceSetting_AISetting) GetSemanticEmbeddingConcurrency() int32 {
 		return x.SemanticEmbeddingConcurrency
 	}
 	return 0
+}
+
+func (x *InstanceSetting_AISetting) GetOpenaiEmbeddingModels() []string {
+	if x != nil {
+		return x.OpenaiEmbeddingModels
+	}
+	return nil
+}
+
+func (x *InstanceSetting_AISetting) GetSemanticReindexRunning() bool {
+	if x != nil {
+		return x.SemanticReindexRunning
+	}
+	return false
+}
+
+func (x *InstanceSetting_AISetting) GetSemanticReindexTotal() int32 {
+	if x != nil {
+		return x.SemanticReindexTotal
+	}
+	return 0
+}
+
+func (x *InstanceSetting_AISetting) GetSemanticReindexProcessed() int32 {
+	if x != nil {
+		return x.SemanticReindexProcessed
+	}
+	return 0
+}
+
+func (x *InstanceSetting_AISetting) GetSemanticReindexFailed() int32 {
+	if x != nil {
+		return x.SemanticReindexFailed
+	}
+	return 0
+}
+
+func (x *InstanceSetting_AISetting) GetSemanticReindexStartedTs() int64 {
+	if x != nil {
+		return x.SemanticReindexStartedTs
+	}
+	return 0
+}
+
+func (x *InstanceSetting_AISetting) GetSemanticReindexUpdatedTs() int64 {
+	if x != nil {
+		return x.SemanticReindexUpdatedTs
+	}
+	return 0
+}
+
+func (x *InstanceSetting_AISetting) GetSemanticReindexModel() string {
+	if x != nil {
+		return x.SemanticReindexModel
+	}
+	return ""
+}
+
+func (x *InstanceSetting_AISetting) GetTriggerSemanticReindex() bool {
+	if x != nil {
+		return x.TriggerSemanticReindex
+	}
+	return false
 }
 
 // Custom profile configuration for instance branding.
@@ -1014,7 +1096,7 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x04demo\x18\x03 \x01(\bR\x04demo\x12!\n" +
 	"\finstance_url\x18\x06 \x01(\tR\vinstanceUrl\x12(\n" +
 	"\x05admin\x18\a \x01(\v2\x12.memos.api.v1.UserR\x05admin\"\x1b\n" +
-	"\x19GetInstanceProfileRequest\"\xa8\x13\n" +
+	"\x19GetInstanceProfileRequest\"\xb4\x17\n" +
 	"\x0fInstanceSetting\x12\x17\n" +
 	"\x04name\x18\x01 \x01(\tB\x03\xe0A\bR\x04name\x12W\n" +
 	"\x0fgeneral_setting\x18\x02 \x01(\v2,.memos.api.v1.InstanceSetting.GeneralSettingH\x00R\x0egeneralSetting\x12W\n" +
@@ -1057,7 +1139,7 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x18display_with_update_time\x18\x02 \x01(\bR\x15displayWithUpdateTime\x120\n" +
 	"\x14content_length_limit\x18\x03 \x01(\x05R\x12contentLengthLimit\x127\n" +
 	"\x18enable_double_click_edit\x18\x04 \x01(\bR\x15enableDoubleClickEdit\x12\x1c\n" +
-	"\treactions\x18\a \x03(\tR\treactions\x1a\xba\x03\n" +
+	"\treactions\x18\a \x03(\tR\treactions\x1a\xc6\a\n" +
 	"\tAISetting\x12&\n" +
 	"\x0fopenai_base_url\x18\x01 \x01(\tR\ropenaiBaseUrl\x124\n" +
 	"\x16openai_embedding_model\x18\x02 \x01(\tR\x14openaiEmbeddingModel\x12$\n" +
@@ -1066,7 +1148,17 @@ const file_api_v1_instance_service_proto_rawDesc = "" +
 	"\x14clear_openai_api_key\x18\x05 \x01(\bR\x11clearOpenaiApiKey\x12;\n" +
 	"\x1aopenai_embedding_max_retry\x18\x06 \x01(\x05R\x17openaiEmbeddingMaxRetry\x12H\n" +
 	"!openai_embedding_retry_backoff_ms\x18\a \x01(\x05R\x1dopenaiEmbeddingRetryBackoffMs\x12D\n" +
-	"\x1esemantic_embedding_concurrency\x18\b \x01(\x05R\x1csemanticEmbeddingConcurrency\"N\n" +
+	"\x1esemantic_embedding_concurrency\x18\b \x01(\x05R\x1csemanticEmbeddingConcurrency\x126\n" +
+	"\x17openai_embedding_models\x18\t \x03(\tR\x15openaiEmbeddingModels\x128\n" +
+	"\x18semantic_reindex_running\x18\n" +
+	" \x01(\bR\x16semanticReindexRunning\x124\n" +
+	"\x16semantic_reindex_total\x18\v \x01(\x05R\x14semanticReindexTotal\x12<\n" +
+	"\x1asemantic_reindex_processed\x18\f \x01(\x05R\x18semanticReindexProcessed\x126\n" +
+	"\x17semantic_reindex_failed\x18\r \x01(\x05R\x15semanticReindexFailed\x12=\n" +
+	"\x1bsemantic_reindex_started_ts\x18\x0e \x01(\x03R\x18semanticReindexStartedTs\x12=\n" +
+	"\x1bsemantic_reindex_updated_ts\x18\x0f \x01(\x03R\x18semanticReindexUpdatedTs\x124\n" +
+	"\x16semantic_reindex_model\x18\x10 \x01(\tR\x14semanticReindexModel\x128\n" +
+	"\x18trigger_semantic_reindex\x18\x11 \x01(\bR\x16triggerSemanticReindex\"N\n" +
 	"\x03Key\x12\x13\n" +
 	"\x0fKEY_UNSPECIFIED\x10\x00\x12\v\n" +
 	"\aGENERAL\x10\x01\x12\v\n" +

@@ -32,7 +32,7 @@ func (s *APIV1Service) SearchMemosSemantic(ctx context.Context, request *v1pb.Se
 	if err != nil {
 		return nil, status.Errorf(codes.FailedPrecondition, "semantic search is not configured: %v", err)
 	}
-	queryEmbedding, err := embeddingClient.Embed(ctx, query)
+	queryEmbedding, err := embeddingClient.Embed(withEmbeddingTask(ctx, embeddingTaskQuery), query)
 	if err != nil {
 		return nil, status.Errorf(codes.Internal, "failed to generate query embedding: %v", err)
 	}
@@ -262,6 +262,10 @@ func (s *APIV1Service) scheduleMemoEmbeddingDelete(memoID int32) {
 }
 
 func (s *APIV1Service) refreshMemoEmbedding(ctx context.Context, memoID int32, content string) error {
+	return s.refreshMemoEmbeddingWithOptions(ctx, memoID, content, false)
+}
+
+func (s *APIV1Service) refreshMemoEmbeddingWithOptions(ctx context.Context, memoID int32, content string, force bool) error {
 	embeddingClient, err := s.getSemanticEmbeddingClient(ctx)
 	if err != nil {
 		return err
@@ -274,11 +278,11 @@ func (s *APIV1Service) refreshMemoEmbedding(ctx context.Context, memoID int32, c
 	if err != nil {
 		return err
 	}
-	if existingHash == contentHash {
+	if !force && existingHash == contentHash {
 		return nil
 	}
 
-	embedding, err := embeddingClient.Embed(ctx, content)
+	embedding, err := embeddingClient.Embed(withEmbeddingTask(ctx, embeddingTaskPassage), content)
 	if err != nil {
 		return err
 	}

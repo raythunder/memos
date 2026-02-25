@@ -155,6 +155,48 @@ func TestOpenAIEmbeddingClientNoRetryOnUnauthorized(t *testing.T) {
 	require.Equal(t, int32(1), atomic.LoadInt32(&attemptCount))
 }
 
+func TestOpenAIEmbeddingClientJinaRequestBody(t *testing.T) {
+	t.Parallel()
+
+	type embeddingRequest struct {
+		Model string   `json:"model"`
+		Input []string `json:"input"`
+		Task  string   `json:"task"`
+	}
+	requestCh := make(chan embeddingRequest, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		var request embeddingRequest
+		err := json.NewDecoder(r.Body).Decode(&request)
+		require.NoError(t, err)
+		requestCh <- request
+
+		w.Header().Set("Content-Type", "application/json")
+		_ = json.NewEncoder(w).Encode(map[string]any{
+			"data": []map[string]any{
+				{
+					"embedding": []float64{0.1, 0.2, 0.3},
+				},
+			},
+		})
+	}))
+	defer server.Close()
+
+	client, err := newOpenAIEmbeddingClient(&openAIEmbeddingConfig{
+		baseURL: server.URL,
+		apiKey:  "jina-test-key",
+		model:   "jina-embeddings-v4",
+	})
+	require.NoError(t, err)
+
+	_, err = client.Embed(withEmbeddingTask(context.Background(), embeddingTaskQuery), "hello world")
+	require.NoError(t, err)
+
+	request := <-requestCh
+	require.Equal(t, "jina-embeddings-v4", request.Model)
+	require.Equal(t, []string{"hello world"}, request.Input)
+	require.Equal(t, embeddingTaskQuery, request.Task)
+}
+
 func TestParseOpenAIEmbeddingMaxRetry(t *testing.T) {
 	t.Parallel()
 

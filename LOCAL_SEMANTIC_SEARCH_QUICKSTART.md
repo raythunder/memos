@@ -53,6 +53,17 @@ pnpm dev --host 127.0.0.1 --port 5173
 
 - `Settings -> AI`
 - 填写 OpenAI API Key（可选再填 Base URL / Embedding Model）
+- Base URL 只填服务根路径，例如：
+  - OpenAI: `https://api.openai.com/v1`
+  - Jina: `https://api.jina.ai/v1`
+  - 不要填写 `.../v1/embeddings`（后端会自动拼接 `/embeddings`）
+- Embedding 模型支持“列表保存 + 下拉切换”：
+  - 每行一个模型名（如 `text-embedding-3-small`、`jina-embeddings-v4`）
+  - 在“Embedding 模型”下拉框切换当前生效模型
+- 支持一键后台重建向量（Reindex vectors）：
+  - 点击 `Start reindex` 后在后端后台运行
+  - 页面展示进度（已处理/总数、失败数、模型、时间）
+  - 刷新页面后进度仍会从服务端恢复显示
 
 也可用环境变量（后端启动时传入）：
 
@@ -67,4 +78,3 @@ pnpm dev --host 127.0.0.1 --port 5173
 3. 搜索栏切到 `semantic` 模式并输入自然语言查询
 4. 若未配 AI，预期报错：`semantic search is not configured`
 5. 配好 AI 后，等待几秒异步索引，再次搜索应命中相关 memo
-

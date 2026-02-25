@@ -50,6 +50,10 @@ type APIV1Service struct {
 	// embeddingSemaphore limits concurrent embedding refresh jobs to avoid unbounded goroutines.
 	embeddingSemaphore *semaphore.Weighted
 	embeddingMu        sync.RWMutex
+
+	// semanticReindexRunning guards one semantic reindex task at a time.
+	semanticReindexMu      sync.Mutex
+	semanticReindexRunning bool
 }
 
 func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store) *APIV1Service {
@@ -65,6 +69,7 @@ func NewAPIV1Service(secret string, profile *profile.Profile, store *store.Store
 		thumbnailSemaphore: semaphore.NewWeighted(3), // Limit to 3 concurrent thumbnail generations
 	}
 	service.setEmbeddingSemaphoreLimit(embeddingConcurrency)
+	service.resetStaleSemanticReindexState(context.Background())
 	return service
 }
 
