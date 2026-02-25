@@ -1,6 +1,8 @@
 name: memos-semantic-search
 
 services:
+  # Optional local PostgreSQL. Keep this service when running fully local.
+  # If you use Supabase, this container can stay stopped.
   postgres:
     image: postgres:16
     container_name: memos-postgres
@@ -18,16 +20,19 @@ services:
     restart: unless-stopped
 
   memos:
-    image: ${MEMOS_IMAGE:-ghcr.io/your-github-username/memos:fork-latest}
+    image: ${MEMOS_IMAGE:-neosmemo/memos:stable}
     container_name: memos
-    depends_on:
-      postgres:
-        condition: service_healthy
     ports:
       - "5230:5230"
     environment:
       MEMOS_DRIVER: postgres
-      MEMOS_DSN: postgres://memos:memos@postgres:5432/memos?sslmode=disable
+      # Default DSN points to local postgres service.
+      # Override with Supabase DSN in .env when needed.
+      MEMOS_DSN: ${MEMOS_DSN:-postgres://memos:memos@postgres:5432/memos?sslmode=disable}
+      # Optional Supabase Auth integration (hybrid mode).
+      # Example: https://<project-ref>.supabase.co
+      MEMOS_SUPABASE_PROJECT_URL: ${MEMOS_SUPABASE_PROJECT_URL:-}
+      MEMOS_SUPABASE_JWT_AUDIENCE: ${MEMOS_SUPABASE_JWT_AUDIENCE:-authenticated}
       MEMOS_PORT: 5230
       # Optional environment fallback. You can also set these in Settings -> AI.
       MEMOS_OPENAI_API_KEY: ${MEMOS_OPENAI_API_KEY:-}
